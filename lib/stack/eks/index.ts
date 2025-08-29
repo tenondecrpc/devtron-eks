@@ -38,11 +38,11 @@ export class EksFactory extends Construct {
         const isProd = envName === "prod";
 
         // Create EKS cluster optimized for Devtron
-        this.cluster = new EksConstruct(this, 'DevtronEksCluster', {
-            clusterName: `${projectName}-${envName}-devtron-cluster`,
+        this.cluster = new EksConstruct(this, 'EksCluster', {
+            clusterName: `${projectName}-${envName}-cluster`,
             vpc: vpc,
             vpcName: `${projectName}-${envName}-vpc`,
-            kubernetesVersion: eks.KubernetesVersion.V1_33,
+            kubernetesVersion: eks.KubernetesVersion.V1_31,
             nodeGroupInstanceTypes: [
                 new ec2.InstanceType('t3.large'), // Devtron needs more resources
                 new ec2.InstanceType('t3.xlarge'),
@@ -66,13 +66,13 @@ export class EksFactory extends Construct {
             },
         });
 
-        // Install essential Kubernetes add-ons for Devtron
-        this.installEssentialAddons();
+        // Install essential add-ons using Kubernetes manifests (no kubectl required)
+        this.installEssentialAddonsWithManifests();
 
-        // Install Devtron if enabled
-        if (enableDevtron) {
-            this.installDevtron(devtronConfig);
-        }
+        // Skip Devtron installation for now - can be installed manually later
+        // if (enableDevtron) {
+        //     this.installDevtron(devtronConfig);
+        // }
 
         // Create outputs for easy access
         this.createOutputs();
@@ -561,6 +561,196 @@ export class EksFactory extends Construct {
         new CfnOutput(this, 'DevtronAdminCredentials', {
             value: 'Email: admin@devtron.ai | Password: devtron123',
             description: 'Default admin credentials for Devtron (change after first login)',
+        });
+    }
+
+    /**
+     * Install essential add-ons using Kubernetes manifests (no kubectl required)
+     */
+    private installEssentialAddonsWithManifests(): void {
+        // Create metrics-server deployment using Kubernetes manifest
+        this.cluster.cluster.addManifest('MetricsServerDeployment', {
+            apiVersion: 'apps/v1',
+            kind: 'Deployment',
+            metadata: {
+                name: 'metrics-server',
+                namespace: 'kube-system',
+                labels: {
+                    'k8s-app': 'metrics-server',
+                },
+            },
+            spec: {
+                selector: {
+                    matchLabels: {
+                        'k8s-app': 'metrics-server',
+                    },
+                },
+                template: {
+                    metadata: {
+                        labels: {
+                            'k8s-app': 'metrics-server',
+                        },
+                    },
+                    spec: {
+                        containers: [
+                            {
+                                name: 'metrics-server',
+                                image: 'registry.k8s.io/metrics-server/metrics-server:v0.7.1',
+                                args: [
+                                    '--cert-dir=/tmp',
+                                    '--secure-port=4443',
+                                    '--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname',
+                                    '--kubelet-use-node-status-port',
+                                    '--metric-resolution=15s',
+                                ],
+                                ports: [
+                                    {
+                                        name: 'https',
+                                        containerPort: 4443,
+                                        protocol: 'TCP',
+                                    },
+                                ],
+                                readinessProbe: {
+                                    httpGet: {
+                                        path: '/readyz',
+                                        port: 'https',
+                                        scheme: 'HTTPS',
+                                    },
+                                    periodSeconds: 10,
+                                    failureThreshold: 3,
+                                    initialDelaySeconds: 20,
+                                },
+                                livenessProbe: {
+                                    httpGet: {
+                                        path: '/livez',
+                                        port: 'https',
+                                        scheme: 'HTTPS',
+                                    },
+                                    periodSeconds: 10,
+                                    failureThreshold: 3,
+                                    initialDelaySeconds: 20,
+                                },
+                                securityContext: {
+                                    allowPrivilegeEscalation: false,
+                                    readOnlyRootFilesystem: true,
+                                    runAsNonRoot: true,
+                                    runAsUser: 1000,
+                                    seccompProfile: {
+                                        type: 'RuntimeDefault',
+                                    },
+                                    capabilities: {
+                                        drop: ['ALL'],
+                                    },
+                                },
+                                volumeMounts: [
+                                    {
+                                        name: 'tmp-dir',
+                                        mountPath: '/tmp',
+                                    },
+                                ],
+                            },
+                        ],
+                        volumes: [
+                            {
+                                name: 'tmp-dir',
+                                emptyDir: {},
+                            },
+                        ],
+                        priorityClassName: 'system-cluster-critical',
+                        serviceAccountName: 'metrics-server',
+                        nodeSelector: {
+                            'kubernetes.io/os': 'linux',
+                        },
+                    },
+                },
+            },
+        });
+
+        // Create metrics-server service
+        this.cluster.cluster.addManifest('MetricsServerService', {
+            apiVersion: 'v1',
+            kind: 'Service',
+            metadata: {
+                name: 'metrics-server',
+                namespace: 'kube-system',
+                labels: {
+                    'k8s-app': 'metrics-server',
+                },
+            },
+            spec: {
+                selector: {
+                    'k8s-app': 'metrics-server',
+                },
+                ports: [
+                    {
+                        name: 'https',
+                        port: 443,
+                        protocol: 'TCP',
+                        targetPort: 'https',
+                    },
+                ],
+            },
+        });
+
+        // Create metrics-server service account
+        this.cluster.cluster.addManifest('MetricsServerServiceAccount', {
+            apiVersion: 'v1',
+            kind: 'ServiceAccount',
+            metadata: {
+                name: 'metrics-server',
+                namespace: 'kube-system',
+                labels: {
+                    'k8s-app': 'metrics-server',
+                },
+            },
+        });
+
+        // Create metrics-server cluster role
+        this.cluster.cluster.addManifest('MetricsServerClusterRole', {
+            apiVersion: 'rbac.authorization.k8s.io/v1',
+            kind: 'ClusterRole',
+            metadata: {
+                name: 'system:metrics-server',
+                labels: {
+                    'k8s-app': 'metrics-server',
+                },
+            },
+            rules: [
+                {
+                    apiGroups: [''],
+                    resources: ['nodes/metrics'],
+                    verbs: ['get'],
+                },
+                {
+                    apiGroups: [''],
+                    resources: ['pods', 'nodes'],
+                    verbs: ['get', 'list', 'watch'],
+                },
+            ],
+        });
+
+        // Create metrics-server cluster role binding
+        this.cluster.cluster.addManifest('MetricsServerClusterRoleBinding', {
+            apiVersion: 'rbac.authorization.k8s.io/v1',
+            kind: 'ClusterRoleBinding',
+            metadata: {
+                name: 'system:metrics-server',
+                labels: {
+                    'k8s-app': 'metrics-server',
+                },
+            },
+            roleRef: {
+                apiGroup: 'rbac.authorization.k8s.io',
+                kind: 'ClusterRole',
+                name: 'system:metrics-server',
+            },
+            subjects: [
+                {
+                    kind: 'ServiceAccount',
+                    name: 'metrics-server',
+                    namespace: 'kube-system',
+                },
+            ],
         });
     }
 }

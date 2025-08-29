@@ -21,13 +21,15 @@
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
     "skipLibCheck": true,
-    "outDir": "./build",
+    "outDir": "./dist",
     "typeRoots": [
       "./node_modules/@types"
     ]
   },
   "exclude": [
     "node_modules",
-    "cdk.out"
+    "cdk.out",
+    "build",
+    "dist"
   ]
 }
