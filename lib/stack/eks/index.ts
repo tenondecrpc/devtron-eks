@@ -41,6 +41,7 @@ export class EksFactory extends Construct {
         this.cluster = new EksConstruct(this, 'DevtronEksCluster', {
             clusterName: `${projectName}-${envName}-devtron-cluster`,
             vpc: vpc,
+            vpcName: `${projectName}-${envName}-vpc`,
             kubernetesVersion: eks.KubernetesVersion.V1_33,
             nodeGroupInstanceTypes: [
                 new ec2.InstanceType('t3.large'), // Devtron needs more resources

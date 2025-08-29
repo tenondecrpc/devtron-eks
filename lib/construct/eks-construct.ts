@@ -7,8 +7,10 @@ import { Construct } from 'constructs';
 export interface EksConstructProps {
     readonly clusterName: string;
     readonly vpc?: ec2.IVpc;
+    readonly vpcName?: string;
     readonly kubernetesVersion?: eks.KubernetesVersion;
     readonly nodeGroupInstanceTypes?: ec2.InstanceType[];
+    readonly nodeGroupAmiType?: eks.NodegroupAmiType;
     readonly minSize?: number;
     readonly maxSize?: number;
     readonly desiredSize?: number;
@@ -42,8 +44,11 @@ export class EksConstruct extends Construct {
     constructor(scope: Construct, id: string, props: EksConstructProps) {
         super(scope, id);
 
+        const { vpcName } = props;
+
         // Use existing VPC or create new one
         this.vpc = props.vpc || new ec2.Vpc(this, 'EksVpc', {
+            vpcName: vpcName,
             maxAzs: 3,
             natGateways: 2,
             subnetConfiguration: [
@@ -71,12 +76,13 @@ export class EksConstruct extends Construct {
             ],
         });
 
-        // Use public kubectl layer (no binaries in git, no Docker required)
-        // This layer is maintained by AWS and includes kubectl binary
+        // Add kubectl layer permissions to CDK execution role
+        this.addKubectlLayerPermissions();
+
+        // Use AWS official kubectl layer
         const kubectlLayer = cdk.aws_lambda.LayerVersion.fromLayerVersionArn(
             this,
             'KubectlLayer',
-            // AWS public kubectl layer for us-east-1 (adjust region as needed)
             `arn:aws:lambda:${cdk.Stack.of(this).region}:553035198032:layer:kubectl:1`
         );
 
@@ -125,7 +131,7 @@ export class EksConstruct extends Construct {
                 maxSize: props.maxSize || 5,
                 desiredSize: props.desiredSize || 2,
                 subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-                amiType: eks.NodegroupAmiType.AL2_X86_64,
+                amiType: props.nodeGroupAmiType || eks.NodegroupAmiType.BOTTLEROCKET_X86_64,
                 capacityType: eks.CapacityType.ON_DEMAND,
                 diskSize: 20,
                 forceUpdate: false,
@@ -321,6 +327,49 @@ export class EksConstruct extends Construct {
     }
 
     /**
+     * Add kubectl layer permissions to CDK execution role
+     */
+    private addKubectlLayerPermissions(): void {
+        // Create a policy for kubectl layer access
+        const kubectlLayerPolicy = new iam.ManagedPolicy(this, 'KubectlLayerPolicy', {
+            description: 'Allows access to AWS kubectl layer for EKS',
+            statements: [
+                new iam.PolicyStatement({
+                    effect: iam.Effect.ALLOW,
+                    actions: [
+                        'lambda:GetLayerVersion',
+                        'lambda:GetLayerVersionByArn'
+                    ],
+                    resources: [
+                        `arn:aws:lambda:*:553035198032:layer:kubectl:*`
+                    ]
+                })
+            ]
+        });
+
+        // Try to attach to CDK execution role if it exists
+        try {
+            const cdkExecutionRoleName = `cdk-hnb659fds-cfn-exec-role-${cdk.Stack.of(this).account}-${cdk.Stack.of(this).region}`;
+            const cdkExecutionRole = iam.Role.fromRoleName(this, 'CdkExecutionRole', cdkExecutionRoleName);
+            
+            // Attach the policy to the CDK execution role
+            cdkExecutionRole.addManagedPolicy(kubectlLayerPolicy);
+            
+            // Output success message
+            new cdk.CfnOutput(this, 'KubectlLayerPermissions', {
+                value: 'Configured automatically',
+                description: 'Kubectl layer permissions status'
+            });
+        } catch (error) {
+            // If we can't find the CDK role, output manual instructions
+            new cdk.CfnOutput(this, 'KubectlLayerPermissionsManual', {
+                value: `aws iam attach-role-policy --role-name cdk-hnb659fds-cfn-exec-role-${cdk.Stack.of(this).account}-${cdk.Stack.of(this).region} --policy-arn ${kubectlLayerPolicy.managedPolicyArn}`,
+                description: 'Run this command to add kubectl layer permissions manually'
+            });
+        }
+    }
+
+    /**
      * Add a managed node group to the cluster
      */
     public addManagedNodeGroup(id: string, options: {
@@ -331,6 +380,7 @@ export class EksConstruct extends Construct {
         labels?: { [key: string]: string };
         taints?: eks.TaintSpec[];
         securityGroup?: ec2.ISecurityGroup;
+        amiType?: eks.NodegroupAmiType;
     }): eks.Nodegroup {
         const nodeGroupRole = new iam.Role(this, `${id}NodeGroupRole`, {
             assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
@@ -349,6 +399,7 @@ export class EksConstruct extends Construct {
             maxSize: options.maxSize || 3,
             desiredSize: options.desiredSize || 2,
             subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+            amiType: options.amiType || eks.NodegroupAmiType.BOTTLEROCKET_X86_64,
             labels: options.labels,
             taints: options.taints,
         });
