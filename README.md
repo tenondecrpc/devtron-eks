@@ -210,24 +210,42 @@ aws sts get-caller-identity --profile AWS_PROFILE
 
 ## EKS Cluster Access Setup
 
-After successful deployment, configure kubectl access to your EKS cluster:
+After successful deployment, use our centralized setup script to configure everything:
 
-### Option 1: Quick Setup (Recommended)
+### Option 1: Interactive Setup (Recommended)
 ```bash
-# Run the quick setup script
-./scripts/quick-kubectl-setup.sh
+# Run the all-in-one setup script
+./scripts/setup.sh
 ```
 
-### Option 2: Complete Setup with Validation
+This interactive script will guide you through:
+- AWS profile configuration (SSO or access keys)
+- kubectl setup and validation
+- Connection testing
+- Useful commands reference
+
+### Option 2: Quick Non-Interactive Setup
 ```bash
-# Run the comprehensive setup script
-./scripts/setup-kubectl-access.sh
+# Quick kubectl setup (requires AWS already configured)
+./scripts/setup.sh --quick
+
+# Complete setup with validations
+./scripts/setup.sh --full
+
+# Configure AWS profile only
+./scripts/setup.sh --aws-only
+
+# Configure kubectl only
+./scripts/setup.sh --kubectl-only
+
+# Show current configuration status
+./scripts/setup.sh --status
 ```
 
 ### Option 3: Manual Setup
 ```bash
 # Configure kubectl manually
-aws eks update-kubeconfig --region us-east-1 --name CLUSTER_NAME --profile AWS_PROFILE
+aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile $AWS_PROFILE
 
 # Test connection
 kubectl get nodes
@@ -325,7 +343,7 @@ npx cdk deploy --context environment=prod --profile AWS_PROFILE
    ```
 5. **Setup kubectl access**:
    ```bash
-   ./scripts/quick-kubectl-setup.sh
+   ./scripts/setup.sh --quick
    ```
 6. **Verify deployment**:
    ```bash
