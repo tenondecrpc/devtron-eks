@@ -1,2 +1,0 @@
-# Minimal requirements for kubectl layer
-boto3>=1.26.0

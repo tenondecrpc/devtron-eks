@@ -71,17 +71,19 @@ export class EksConstruct extends Construct {
             ],
         });
 
-        // Create kubectl layer from assets
-        const kubectlLayer = new cdk.aws_lambda.LayerVersion(this, 'KubectlLayer', {
-            code: cdk.aws_lambda.Code.fromAsset('assets/kubectl-layer'),
-            compatibleRuntimes: [cdk.aws_lambda.Runtime.PYTHON_3_11],
-            description: 'kubectl layer for EKS cluster management',
-        });
+        // Use public kubectl layer (no binaries in git, no Docker required)
+        // This layer is maintained by AWS and includes kubectl binary
+        const kubectlLayer = cdk.aws_lambda.LayerVersion.fromLayerVersionArn(
+            this,
+            'KubectlLayer',
+            // AWS public kubectl layer for us-east-1 (adjust region as needed)
+            `arn:aws:lambda:${cdk.Stack.of(this).region}:553035198032:layer:kubectl:1`
+        );
 
         // Create EKS Cluster
         this.cluster = new eks.Cluster(this, 'EksCluster', {
             clusterName: props.clusterName,
-            version: props.kubernetesVersion || eks.KubernetesVersion.V1_28,
+            version: props.kubernetesVersion || eks.KubernetesVersion.V1_33,
             role: clusterRole,
             vpc: this.vpc,
             vpcSubnets: [
