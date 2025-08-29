@@ -131,7 +131,7 @@ export class EksConstruct extends Construct {
      */
     private addClusterAdmin(customPrincipalArn?: string, authMethod: 'sso' | 'access-keys' | 'auto' = 'auto'): void {
         let principalArn: string;
-        
+
         if (customPrincipalArn) {
             // Use custom principal if provided
             principalArn = customPrincipalArn;
@@ -139,7 +139,7 @@ export class EksConstruct extends Construct {
             // Get default principal based on auth method
             principalArn = this.getDefaultPrincipalArn(authMethod);
         }
-        
+
         // Add the principal as cluster admin
         // This allows the specified principal to access the cluster
         new eksv2.AccessEntry(this, 'ClusterAdminAccess', {
@@ -158,16 +158,16 @@ export class EksConstruct extends Construct {
      */
     private getDefaultPrincipalArn(authMethod: 'sso' | 'access-keys' | 'auto' = 'auto'): string {
         const account = cdk.Stack.of(this).account;
-        
+
         switch (authMethod) {
             case 'sso':
                 // SSO role (current setup)
                 return `arn:aws:iam::${account}:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess+_5af960e92c465c55`;
-            
+
             case 'access-keys':
                 // Common roles for access keys - try OrganizationAccountAccessRole first
                 return `arn:aws:iam::${account}:role/OrganizationAccountAccessRole`;
-            
+
             case 'auto':
             default:
                 // Default to SSO for backward compatibility
