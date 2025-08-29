@@ -12,6 +12,9 @@ export interface EksConstructProps {
     readonly maxSize?: number;
     readonly desiredSize?: number;
     readonly tags?: { [key: string]: string };
+    readonly adminPrincipalArn?: string;
+    readonly skipClusterAdmin?: boolean;
+    readonly authMethod?: 'sso' | 'access-keys' | 'auto';
 }
 
 export class EksConstruct extends Construct {
@@ -58,6 +61,11 @@ export class EksConstruct extends Construct {
         // Add default tags
         cdk.Tags.of(this).add('Component', 'EKS');
         cdk.Tags.of(this).add('ManagedBy', 'CDK');
+
+        // Add the deploying user as cluster admin (if not skipped)
+        if (!props.skipClusterAdmin) {
+            this.addClusterAdmin(props.adminPrincipalArn, props.authMethod);
+        }
 
         // Output important values
         new cdk.CfnOutput(this, 'ClusterName', {
@@ -116,6 +124,56 @@ export class EksConstruct extends Construct {
             namespace: options.namespace || 'default',
             values: options.values,
         });
+    }
+
+    /**
+     * Add cluster admin access for the deploying user
+     */
+    private addClusterAdmin(customPrincipalArn?: string, authMethod: 'sso' | 'access-keys' | 'auto' = 'auto'): void {
+        let principalArn: string;
+        
+        if (customPrincipalArn) {
+            // Use custom principal if provided
+            principalArn = customPrincipalArn;
+        } else {
+            // Get default principal based on auth method
+            principalArn = this.getDefaultPrincipalArn(authMethod);
+        }
+        
+        // Add the principal as cluster admin
+        // This allows the specified principal to access the cluster
+        new eksv2.AccessEntry(this, 'ClusterAdminAccess', {
+            cluster: this.cluster,
+            principal: principalArn,
+            accessPolicies: [
+                eksv2.AccessPolicy.fromAccessPolicyName('AmazonEKSClusterAdminPolicy', {
+                    accessScopeType: eksv2.AccessScopeType.CLUSTER,
+                }),
+            ],
+        });
+    }
+
+    /**
+     * Get the default principal ARN based on authentication method
+     */
+    private getDefaultPrincipalArn(authMethod: 'sso' | 'access-keys' | 'auto' = 'auto'): string {
+        const account = cdk.Stack.of(this).account;
+        
+        switch (authMethod) {
+            case 'sso':
+                // SSO role (current setup)
+                return `arn:aws:iam::${account}:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess+_5af960e92c465c55`;
+            
+            case 'access-keys':
+                // Common roles for access keys - try OrganizationAccountAccessRole first
+                return `arn:aws:iam::${account}:role/OrganizationAccountAccessRole`;
+            
+            case 'auto':
+            default:
+                // Default to SSO for backward compatibility
+                // TODO: Could implement actual detection logic here
+                return `arn:aws:iam::${account}:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess+_5af960e92c465c55`;
+        }
     }
 
     /**

@@ -16,3 +16,4 @@ kubectl
 *.tar.gz
 *.zip
 dist
+scripts
