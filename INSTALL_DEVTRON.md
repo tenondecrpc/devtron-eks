@@ -45,7 +45,7 @@ Para conectar al cluster EKS:
    npm run connect-cluster
 
 2. Opción manual (especifica el nombre del cluster):
-   aws eks update-kubeconfig --region us-east-1 --name TU-CLUSTER-NAME --profile AWS_PROFILE
+   aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile AWS_PROFILE
 
 Después de conectar, verifica con:
    npm run status

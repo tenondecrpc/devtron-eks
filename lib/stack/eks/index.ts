@@ -30,11 +30,11 @@ export class EksFactory extends Construct {
             vpc: vpc,
             kubernetesVersion: eksv2.KubernetesVersion.V1_32,
             nodeGroupInstanceTypes: [
-                new ec2.InstanceType('t3.medium'),
+                new ec2.InstanceType('t3.large'),
             ],
-            minSize: 2,
-            maxSize: 10,
-            desiredSize: isProd ? 4 : 2,
+            minSize: 3,
+            maxSize: 15,
+            desiredSize: isProd ? 6 : 3,
             tags: {
                 Environment: envName,
                 Project: projectName,

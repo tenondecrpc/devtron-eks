@@ -100,7 +100,7 @@ npm run build
 ```bash
 # Configura las variables de entorno del proyecto
 
-# Opción A: Variables de entorno temporales (sesión actual)
+# Opción A: Variables de entorno temporales
 export ENV_NAME=dev
 export PROJECT_NAME=devtron
 export AWS_ACCOUNT=xxxx81713846
@@ -315,7 +315,7 @@ npx cdk destroy --profile AWS_PROFILE
 
 **Si el cluster tiene un nombre diferente, conecta manualmente:**
 ```bash
-aws eks update-kubeconfig --region us-east-1 --name TU-CLUSTER-NAME --profile AWS_PROFILE
+aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile AWS_PROFILE
 ```
 
 ## 🔄 Versiones de Kubernetes

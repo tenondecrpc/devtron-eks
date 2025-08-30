@@ -10,7 +10,7 @@
     "cdk": "cdk",
     "deploy": "cdk deploy --require-approval never --profile AWS_PROFILE",
     "destroy": "cdk destroy --profile AWS_PROFILE",
-    "connect": "echo 'Para conectar al cluster EKS:' && echo '' && echo '1. Opción automática (usa el nombre por defecto):' && echo '   npm run connect-cluster' && echo '' && echo '2. Opción manual (especifica el nombre del cluster):' && echo '   aws eks update-kubeconfig --region us-east-1 --name TU-CLUSTER-NAME --profile AWS_PROFILE' && echo '' && echo 'Después de conectar, verifica con:' && echo '   npm run status'",
+    "connect": "echo 'Para conectar al cluster EKS:' && echo '' && echo '1. Opción automática (usa el nombre por defecto):' && echo '   npm run connect-cluster' && echo '' && echo '2. Opción manual (especifica el nombre del cluster):' && echo '   aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile AWS_PROFILE' && echo '' && echo 'Después de conectar, verifica con:' && echo '   npm run status'",
     "connect-cluster": "echo 'Conectando al cluster EKS...' && aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile AWS_PROFILE && echo '✅ Conexión configurada. Verificando...' && kubectl cluster-info",
     "status": "kubectl cluster-info && kubectl get nodes",
     "pods": "kubectl get pods -A",
