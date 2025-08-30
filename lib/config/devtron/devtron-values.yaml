@@ -1,0 +1,90 @@
+installer:
+  release: "devtron"
+  modules: "{cicd}"
+# Enable ArgoCD for GitOps functionality
+argo-cd:
+  enabled: true
+components:
+  dashboard:
+    enabled: true
+  devtron:
+    enabled: true
+  argocd:
+    enabled: true
+# Enable MinIO for blob storage (required for CI/CD functionality)
+minio:
+  enabled: true
+  persistence:
+    enabled: false  # Use emptyDir to prevent EBS orphan resources
+  # Resource limits for MinIO
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+postgresql:
+  enabled: true
+  auth:
+    enablePostgresUser: true
+    username: "postgres"
+    password: "devtron"
+    database: "orchestrator"
+  architecture: "standalone"
+  primary:
+    initdb:
+      scripts:
+        init.sql: |
+          CREATE DATABASE IF NOT EXISTS casbin;
+          CREATE DATABASE IF NOT EXISTS git_sensor;
+          CREATE DATABASE IF NOT EXISTS lens;
+  persistence:
+    enabled: false
+  # Resource limits to prevent resource exhaustion
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+prometheus:
+  persistence:
+    enabled: false
+  # Resource limits for Prometheus
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+service:
+  type: "LoadBalancer"
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+    # Additional annotations to prevent LoadBalancer issues
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-healthy-threshold: "2"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-unhealthy-threshold: "2"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: "10"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-timeout: "5"
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: true
+# Global resource management
+global:
+  storageClass: "gp2"
+  # Prevent resource conflicts
+  postgresql:
+    auth:
+      postgresPassword: "devtron"
+      username: "postgres"
+      password: "devtron"
+      database: "orchestrator"

@@ -18,7 +18,9 @@ NC='\033[0m' # No Color
 # Configuration
 DEVTRON_NAMESPACE="devtroncd"
 VALUES_FILE="devtron-values.yaml"
-OUTPUTS_FILE="outputs.json"
+# Removed OUTPUTS_FILE dependency - now uses centralized config
+DEFAULT_CONFIG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/config/devtron"
+DEFAULT_VALUES_FILE="${DEFAULT_CONFIG_DIR}/devtron-values.yaml"
 HELM_TIMEOUT="15m"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -166,37 +168,57 @@ get_devtron_url() {
 # INSTALLATION FUNCTIONS (from install-devtron-auto.sh)
 # =============================================================================
 
-# Function to get CDK outputs
-get_cdk_outputs() {
-    print_section "Reading CDK Configuration"
+# Function to get Devtron configuration (no longer depends on CDK outputs)
+get_devtron_config() {
+    print_section "Loading Devtron Configuration"
 
-    if [ ! -f "$OUTPUTS_FILE" ]; then
-        print_error "CDK outputs file not found: $OUTPUTS_FILE"
-        print_info "Run 'cdk deploy' first to generate the outputs"
-        return 1
+    # First, try to use the centralized config file
+    if [ -f "$DEFAULT_VALUES_FILE" ]; then
+        print_success "Found centralized Devtron configuration: $DEFAULT_VALUES_FILE"
+        cat "$DEFAULT_VALUES_FILE"
+        return 0
     fi
 
-    # Try to extract Devtron configuration from CDK outputs
-    local devtron_config=""
+    # If centralized config doesn't exist, use default configuration
+    print_warning "Centralized config not found, using default configuration"
+    print_info "This provides a basic working setup optimized for EKS"
 
-    # Look for DevtronConfigFile in outputs
-    if command -v jq >/dev/null 2>&1; then
-        devtron_config=$(jq -r '.DevtronStack?.DevtronConfigFile // empty' "$OUTPUTS_FILE" 2>/dev/null || echo "")
-    fi
+    # Default Devtron configuration optimized for EKS
+    cat << 'EOF'
+installer:
+  release: "devtron"
+  modules:
+    - "cicd"
+components:
+  dashboard:
+    enabled: true
+  devtron:
+    enabled: true
+  argocd:
+    enabled: true
+postgresql:
+  persistence:
+    enabled: false
+prometheus:
+  persistence:
+    enabled: false
+minio:
+  persistence:
+    enabled: false
+service:
+  type: "LoadBalancer"
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: true
+EOF
 
-    if [ -z "$devtron_config" ]; then
-        # Try alternative formats
-        devtron_config=$(grep -o '"DevtronConfigFile":[^}]*' "$OUTPUTS_FILE" | sed 's/.*"DevtronConfigFile"://' | sed 's/,$//' 2>/dev/null || echo "")
-    fi
-
-    if [ -z "$devtron_config" ]; then
-        print_error "Could not find DevtronConfigFile in CDK outputs"
-        print_info "Make sure CDK deployment included Devtron configuration"
-        return 1
-    fi
-
-    print_success "Found Devtron configuration in CDK outputs"
-    echo "$devtron_config"
     return 0
 }
 
@@ -211,9 +233,7 @@ create_values_file() {
         return 1
     fi
 
-    # Remove quotes and unescape
-    values_content=$(echo "$values_content" | sed 's/^"//' | sed 's/"$//' | sed 's/\\n/\n/g' | sed 's/\\"/"/g')
-
+    # Content is already valid YAML, no need to unescape
     echo "$values_content" > "$VALUES_FILE"
     print_success "Values file created: ${VALUES_FILE}"
 
@@ -243,40 +263,121 @@ setup_helm_repo() {
     print_section_end
 }
 
-# Function to install Devtron
+# Function to clean up orphaned resources before installation
+cleanup_orphaned_resources() {
+    print_section "Cleaning Orphaned Resources"
+
+    # Clean up orphaned PVCs
+    print_info "Checking for orphaned PersistentVolumeClaims..."
+    orphaned_pvcs=$(kubectl get pvc -n "$DEVTRON_NAMESPACE" --no-headers 2>/dev/null | grep -v "Bound" | wc -l)
+    if [ "$orphaned_pvcs" -gt 0 ]; then
+        print_warning "Found $orphaned_pvcs orphaned PVCs. Cleaning up..."
+        kubectl delete pvc -n "$DEVTRON_NAMESPACE" --all --ignore-not-found=true
+        print_success "Cleaned up orphaned PVCs"
+    else
+        print_success "No orphaned PVCs found"
+    fi
+
+    # Clean up orphaned PVs
+    print_info "Checking for orphaned PersistentVolumes..."
+    orphaned_pvs=$(kubectl get pv --no-headers 2>/dev/null | grep "$DEVTRON_NAMESPACE" | grep -v "Bound" | wc -l)
+    if [ "$orphaned_pvs" -gt 0 ]; then
+        print_warning "Found $orphaned_pvs orphaned PVs. Cleaning up..."
+        kubectl delete pv $(kubectl get pv --no-headers | grep "$DEVTRON_NAMESPACE" | grep -v "Bound" | awk '{print $1}') --ignore-not-found=true
+        print_success "Cleaned up orphaned PVs"
+    else
+        print_success "No orphaned PVs found"
+    fi
+
+    # Clean up failed pods
+    print_info "Checking for failed pods..."
+    failed_pods=$(kubectl get pods -n "$DEVTRON_NAMESPACE" --no-headers 2>/dev/null | grep -E "(Error|CrashLoopBackOff|Failed)" | wc -l)
+    if [ "$failed_pods" -gt 0 ]; then
+        print_warning "Found $failed_pods failed pods. Cleaning up..."
+        kubectl delete pods -n "$DEVTRON_NAMESPACE" --field-selector=status.phase=Failed --ignore-not-found=true
+        print_success "Cleaned up failed pods"
+    else
+        print_success "No failed pods found"
+    fi
+
+    # Clean up orphaned LoadBalancer services
+    print_info "Checking for orphaned LoadBalancer services..."
+    orphaned_svcs=$(kubectl get svc -n "$DEVTRON_NAMESPACE" --no-headers 2>/dev/null | grep "LoadBalancer" | grep "<pending>" | wc -l)
+    if [ "$orphaned_svcs" -gt 0 ]; then
+        print_warning "Found $orphaned_svcs orphaned LoadBalancer services. This may take time to clean up in AWS..."
+        # Note: LoadBalancer cleanup in AWS may take several minutes
+        print_info "LoadBalancer cleanup may take 5-15 minutes in AWS"
+    else
+        print_success "No orphaned LoadBalancer services found"
+    fi
+
+    print_section_end
+}
+
+# Function to install Devtron with enhanced error handling
 install_devtron_auto() {
     print_section "Devtron Installation"
 
     # Check if already installed
     if helm list -n "$DEVTRON_NAMESPACE" | grep -q devtron; then
-        print_warning "Devtron is already installed. Skipping installation."
+        print_warning "Devtron is already installed. Use 'helm upgrade' to update or uninstall first."
         return 0
     fi
 
-    # Install Devtron
-    print_info "Installing Devtron via Helm..."
-    if [ -f "$VALUES_FILE" ]; then
-        helm install devtron devtron/devtron-operator \
-            --namespace "$DEVTRON_NAMESPACE" \
-            --create-namespace \
-            --values "$VALUES_FILE" \
-            --timeout "$HELM_TIMEOUT" \
-            --wait
-    else
-        print_warning "No values file found. Installing with defaults..."
-        helm install devtron devtron/devtron-operator \
-            --namespace "$DEVTRON_NAMESPACE" \
-            --create-namespace \
-            --timeout "$HELM_TIMEOUT" \
-            --wait
-    fi
+    # Clean up any orphaned resources first
+    cleanup_orphaned_resources
 
-    if [ $? -eq 0 ]; then
-        print_success "Devtron installed successfully"
-    else
-        print_error "Devtron installation failed"
+    # Pre-flight checks
+    print_info "Running pre-flight checks..."
+    if ! kubectl cluster-info >/dev/null 2>&1; then
+        print_error "Cannot connect to Kubernetes cluster"
         return 1
     fi
+
+    # Install Devtron with retries
+    local max_retries=3
+    local retry_count=0
+
+    while [ $retry_count -lt $max_retries ]; do
+        print_info "Installing Devtron via Helm (attempt $((retry_count + 1))/$max_retries)..."
+
+        if [ -f "$VALUES_FILE" ]; then
+            helm install devtron devtron/devtron-operator \
+                --namespace "$DEVTRON_NAMESPACE" \
+                --create-namespace \
+                --values "$VALUES_FILE" \
+                --timeout "$HELM_TIMEOUT" \
+                --wait \
+                --atomic  # Rollback on failure
+        else
+            print_warning "No values file found. Installing with defaults..."
+            helm install devtron devtron/devtron-operator \
+                --namespace "$DEVTRON_NAMESPACE" \
+                --create-namespace \
+                --timeout "$HELM_TIMEOUT" \
+                --wait \
+                --atomic  # Rollback on failure
+        fi
+
+        if [ $? -eq 0 ]; then
+            print_success "Devtron installed successfully on attempt $((retry_count + 1))"
+            break
+        else
+            retry_count=$((retry_count + 1))
+            if [ $retry_count -lt $max_retries ]; then
+                print_warning "Installation attempt $retry_count failed. Retrying in 30 seconds..."
+                sleep 30
+
+                # Clean up failed installation
+                helm uninstall devtron -n "$DEVTRON_NAMESPACE" --ignore-not-found=true
+                cleanup_orphaned_resources
+            else
+                print_error "Devtron installation failed after $max_retries attempts"
+                print_info "Check the troubleshooting section for more help"
+                return 1
+            fi
+        fi
+    done
 
     print_section_end
     return 0
@@ -512,6 +613,118 @@ check_cluster() {
     return 0
 }
 
+# Function to perform advanced diagnostics
+advanced_diagnostics() {
+    print_section "Advanced Diagnostics"
+
+    # Check cluster resources
+    print_info "Checking cluster resources..."
+    local cpu_available=$(kubectl get nodes -o jsonpath='{.items[*].status.capacity.cpu}' | tr ' ' '\n' | awk '{sum += $1} END {print sum}')
+    local memory_available=$(kubectl get nodes -o jsonpath='{.items[*].status.capacity.memory}' | tr ' ' '\n' | sed 's/Ki//' | awk '{sum += $1} END {print sum}')
+    local memory_gb=$((memory_available / 1024 / 1024))
+
+    echo "Available CPU cores: $cpu_available"
+    echo "Available Memory: ${memory_gb}GB"
+
+    if [ "$cpu_available" -lt 2 ]; then
+        print_warning "Low CPU resources detected. Devtron needs at least 2 CPU cores."
+    fi
+
+    if [ "$memory_gb" -lt 4 ]; then
+        print_warning "Low memory resources detected. Devtron needs at least 4GB RAM."
+    fi
+
+    # Check storage classes
+    print_info "Checking storage classes..."
+    if ! kubectl get storageclass gp2 >/dev/null 2>&1; then
+        print_warning "gp2 storage class not found. Devtron configuration uses gp2."
+        print_info "Available storage classes:"
+        kubectl get storageclass
+    else
+        print_success "gp2 storage class available"
+    fi
+
+    # Check for common issues
+    print_info "Checking for common issues..."
+
+    # Check if namespace exists but has issues
+    if kubectl get namespace "$DEVTRON_NAMESPACE" >/dev/null 2>&1; then
+        local terminating_pods=$(kubectl get pods -n "$DEVTRON_NAMESPACE" --no-headers 2>/dev/null | grep "Terminating" | wc -l)
+        if [ "$terminating_pods" -gt 0 ]; then
+            print_warning "Found $terminating_pods pods stuck in Terminating state"
+            print_info "This may indicate resource cleanup issues"
+        fi
+
+        local pending_pods=$(kubectl get pods -n "$DEVTRON_NAMESPACE" --no-headers 2>/dev/null | grep "Pending" | wc -l)
+        if [ "$pending_pods" -gt 0 ]; then
+            print_warning "Found $pending_pods pods in Pending state"
+            print_info "Check node resources or PVC issues"
+        fi
+    fi
+
+    # Check AWS LoadBalancer issues
+    print_info "Checking LoadBalancer status..."
+    local lb_services=$(kubectl get svc -n "$DEVTRON_NAMESPACE" --no-headers 2>/dev/null | grep "LoadBalancer" | wc -l)
+    if [ "$lb_services" -gt 0 ]; then
+        local pending_lb=$(kubectl get svc -n "$DEVTRON_NAMESPACE" --no-headers 2>/dev/null | grep "LoadBalancer" | grep "<pending>" | wc -l)
+        if [ "$pending_lb" -gt 0 ]; then
+            print_warning "Found LoadBalancer services in <pending> state"
+            print_info "This may take 5-15 minutes to provision in AWS"
+            print_info "Check AWS EC2 LoadBalancer console for status"
+        else
+            print_success "LoadBalancer services are active"
+        fi
+    fi
+
+    print_section_end
+}
+
+# Function to force cleanup all Devtron resources
+force_cleanup() {
+    print_section "Force Cleanup All Devtron Resources"
+
+    print_warning "This will remove ALL Devtron-related resources including PVCs and PVs!"
+    read -p "Are you sure you want to continue? (yes/no): " confirm
+
+    if [[ "$confirm" != "yes" ]]; then
+        print_info "Cleanup cancelled"
+        return 0
+    fi
+
+    # Uninstall Helm release
+    print_info "Uninstalling Helm release..."
+    helm uninstall devtron -n "$DEVTRON_NAMESPACE" --ignore-not-found=true --wait
+
+    # Delete namespace (this will delete everything)
+    print_info "Deleting namespace and all resources..."
+    kubectl delete namespace "$DEVTRON_NAMESPACE" --ignore-not-found=true --timeout=300s
+
+    # Wait for namespace deletion
+    local attempts=0
+    local max_attempts=30
+    while [ $attempts -lt $max_attempts ]; do
+        if ! kubectl get namespace "$DEVTRON_NAMESPACE" >/dev/null 2>&1; then
+            break
+        fi
+        print_info "Waiting for namespace deletion... (${attempts}/${max_attempts})"
+        sleep 10
+        ((attempts++))
+    done
+
+    if [ $attempts -eq $max_attempts ]; then
+        print_warning "Namespace deletion timed out. It may still be terminating."
+        print_info "You can check status with: kubectl get namespace $DEVTRON_NAMESPACE"
+    else
+        print_success "Namespace deleted successfully"
+    fi
+
+    # Clean up any remaining orphaned resources
+    cleanup_orphaned_resources
+
+    print_success "Force cleanup completed"
+    print_section_end
+}
+
 check_namespace() {
     print_section "Namespace Check"
 
@@ -614,27 +827,28 @@ show_main_menu() {
     echo ""
     echo -e "${CYAN}🚀 Devtron Manager - Choose Your Action${NC}"
     echo ""
-    echo -e "${YELLOW}💡 Quick Start:${NC} Run '1' after CDK deploy for complete setup"
+    echo -e "${YELLOW}💡 Quick Start:${NC} Run '2' after CDK deploy to verify Direct Installation"
     echo ""
 
     echo -e "${GREEN}📦 INSTALLATION:${NC}"
-    echo "1. 🚀 Complete Auto-Installation (CDK + Devtron)"
+    echo "1. 🚀 Complete Auto-Installation (for Script Installation method)"
     echo ""
 
     echo -e "${BLUE}🔧 OPERATIONS:${NC}"
-    echo "2. 🔧 Verify Installation (after CDK deploy)"
-    echo "3. 📊 Show Status & Information"
-    echo "4. 🔍 Troubleshoot Issues"
+    echo "2. 🔧 Verify Direct Installation (after CDK deploy)"
+    echo "3. ✅ Validate Installation Health (Quick Health Check)"
+    echo "4. 📊 Show Status & Information"
+    echo "5. 🔍 Troubleshoot Issues"
     echo ""
 
     echo -e "${PURPLE}🔗 ACCESS & UTILITIES:${NC}"
-    echo "5. 🔗 Get Access Information"
-    echo "6. 📋 Useful Commands"
+    echo "6. 🔗 Get Access Information (Direct Installation)"
+    echo "7. 📋 Useful Commands"
     echo ""
 
     echo -e "${CYAN}❓ HELP:${NC}"
-    echo "7. ❓ Help & Documentation"
-    echo "8. Exit"
+    echo "8. ❓ Help & Documentation"
+    echo "9. Exit"
     echo ""
 }
 
@@ -654,9 +868,12 @@ show_troubleshooting_menu() {
     echo -e "${CYAN}Troubleshooting Options:${NC}"
     echo ""
     echo "1. 🔍 Full Diagnostic Check"
-    echo "2. 📋 Show Pod Logs"
-    echo "3. 📊 Show Events & Resources"
-    echo "4. 🔙 Back to Main Menu"
+    echo "2. 🔬 Advanced Diagnostics (Resources, Storage, LoadBalancers)"
+    echo "3. 🧹 Clean Orphaned Resources (PVCs, PVs, Failed Pods)"
+    echo "4. 💥 Force Cleanup All Devtron Resources"
+    echo "5. 📋 Show Pod Logs"
+    echo "6. 📊 Show Events & Resources"
+    echo "7. 🔙 Back to Main Menu"
     echo ""
 }
 
@@ -686,9 +903,9 @@ do_complete_installation() {
         return 1
     fi
 
-    # Get CDK outputs
+    # Get Devtron configuration
     local cdk_values
-    if ! cdk_values=$(get_cdk_outputs); then
+    if ! cdk_values=$(get_devtron_config); then
         return 1
     fi
 
@@ -726,12 +943,13 @@ do_verify_installation() {
     echo -e "${MAGENTA}🔧 Verifying Devtron Installation${NC}"
     echo ""
 
-    # Check if Devtron is installed via CDK
+    # Check if Devtron is installed
     if ! helm list -n "$DEVTRON_NAMESPACE" | grep -q devtron; then
-        print_error "Devtron is not installed. Please run 'cdk deploy' first."
+        print_error "Devtron is not installed."
         echo ""
-        print_info "CDK should have installed Devtron automatically."
-        print_info "Check your CDK deployment and try again."
+        print_info "You can install Devtron using:"
+        print_info "  1. CDK Direct Installation (recommended): cdk deploy"
+        print_info "  2. Script Installation: Select option 1 from main menu"
         return 1
     fi
 
@@ -820,7 +1038,7 @@ do_troubleshoot() {
     local choice
     while true; do
         show_troubleshooting_menu
-        read -p "Select troubleshooting option (1-4): " choice
+        read -p "Select troubleshooting option (1-7): " choice
 
         case $choice in
             1)
@@ -833,6 +1051,18 @@ do_troubleshoot() {
                 fi
                 ;;
             2)
+                # Advanced diagnostics
+                advanced_diagnostics
+                ;;
+            3)
+                # Clean orphaned resources
+                cleanup_orphaned_resources
+                ;;
+            4)
+                # Force cleanup
+                force_cleanup
+                ;;
+            5)
                 # Show pod logs
                 local pods=$(kubectl get pods -n "$DEVTRON_NAMESPACE" --no-headers 2>/dev/null | awk '{print $1}')
                 if [ -z "$pods" ]; then
@@ -853,14 +1083,14 @@ do_troubleshoot() {
 
                 show_logs "$pod_name"
                 ;;
-            3)
+            6)
                 # Show events and resources
                 show_events
                 print_section "Resource Usage"
                 kubectl top pods -n "$DEVTRON_NAMESPACE" 2>/dev/null || print_warning "kubectl top not available"
                 print_section_end
                 ;;
-            4)
+            7)
                 return 0
                 ;;
             *)
@@ -995,8 +1225,8 @@ show_help() {
     echo ""
 
     echo -e "${BLUE}ARCHITECTURE:${NC}"
-    echo "   CDK → Installs infrastructure + Devtron"
-    echo "   Script → Operations & troubleshooting"
+    echo "   CDK → Installs infrastructure (Direct Installation)"
+    echo "   Script → Installs Devtron OR Operations & troubleshooting"
     echo ""
 
     echo -e "${BLUE}MAIN FEATURES:${NC}"
@@ -1014,8 +1244,13 @@ show_help() {
     echo ""
 
     echo -e "${BLUE}TYPICAL WORKFLOW:${NC}"
-    echo "   1. cdk deploy                    # CDK installs everything"
-    echo "   2. ./devtron-manager.sh --status # Verify installation"
+    echo "   Method 1 - Direct Installation (Recommended):"
+    echo "   1. cdk deploy                           # CDK installs EKS + Devtron"
+    echo "   2. Access Devtron immediately"
+    echo ""
+    echo "   Method 2 - Script Installation:"
+    echo "   1. cdk deploy -- installDevtronDirectly=false"
+    echo "   2. ./devtron-manager.sh (option 1)       # Install Devtron via script"
     echo "   3. Access Devtron via provided URLs"
     echo ""
 
@@ -1070,7 +1305,7 @@ main() {
     while true; do
         print_header
         show_main_menu
-        read -p "Select an option (1-8): " choice
+        read -p "Select an option (1-9): " choice
 
         case $choice in
             1)
@@ -1080,21 +1315,24 @@ main() {
                 do_verify_installation
                 ;;
             3)
-                show_status
+                validate_installation
                 ;;
             4)
-                do_troubleshoot
+                show_status
                 ;;
             5)
-                do_get_access_info
+                do_troubleshoot
                 ;;
             6)
-                show_useful_commands
+                do_get_access_info
                 ;;
             7)
-                show_help
+                show_useful_commands
                 ;;
             8)
+                show_help
+                ;;
+            9)
                 echo -e "${GREEN}👋 Goodbye!${NC}"
                 exit 0
                 ;;
@@ -1103,7 +1341,7 @@ main() {
                 ;;
         esac
 
-        if [ "$choice" != "8" ]; then
+        if [ "$choice" != "9" ]; then
             echo ""
             read -p "Press Enter to return to main menu..."
         fi
@@ -1113,6 +1351,84 @@ main() {
 # =============================================================================
 # SCRIPT EXECUTION
 # =============================================================================
+
+# Function to validate installation health
+validate_installation() {
+    print_section "Installation Health Check"
+
+    local issues_found=0
+
+    # Check cluster connectivity
+    if ! kubectl cluster-info >/dev/null 2>&1; then
+        print_error "❌ Cannot connect to Kubernetes cluster"
+        ((issues_found++))
+    else
+        print_success "✅ Cluster connectivity OK"
+    fi
+
+    # Check namespace
+    if ! kubectl get namespace "$DEVTRON_NAMESPACE" >/dev/null 2>&1; then
+        print_error "❌ Devtron namespace '$DEVTRON_NAMESPACE' does not exist"
+        ((issues_found++))
+    else
+        print_success "✅ Devtron namespace exists"
+    fi
+
+    # Check Helm release
+    if ! helm list -n "$DEVTRON_NAMESPACE" | grep -q devtron; then
+        print_error "❌ Devtron Helm release not found"
+        ((issues_found++))
+    else
+        print_success "✅ Devtron Helm release found"
+    fi
+
+    # Check pod status
+    local total_pods=$(kubectl get pods -n "$DEVTRON_NAMESPACE" --no-headers 2>/dev/null | wc -l)
+    local running_pods=$(kubectl get pods -n "$DEVTRON_NAMESPACE" --no-headers 2>/dev/null | grep "Running" | wc -l)
+
+    if [ "$total_pods" -eq 0 ]; then
+        print_error "❌ No pods found in Devtron namespace"
+        ((issues_found++))
+    elif [ "$running_pods" -ne "$total_pods" ]; then
+        print_warning "⚠️  $running_pods/$total_pods pods are running"
+        ((issues_found++))
+    else
+        print_success "✅ All $total_pods pods are running"
+    fi
+
+    # Check LoadBalancer
+    local lb_status=$(kubectl get svc -n "$DEVTRON_NAMESPACE" --no-headers 2>/dev/null | grep LoadBalancer | awk '{print $4}')
+    if [ -z "$lb_status" ]; then
+        print_error "❌ No LoadBalancer service found"
+        ((issues_found++))
+    elif [[ "$lb_status" == "<pending>" ]]; then
+        print_warning "⚠️  LoadBalancer is still provisioning (this may take 5-15 minutes)"
+        ((issues_found++))
+    else
+        print_success "✅ LoadBalancer is active: $lb_status"
+    fi
+
+    # Check for orphaned resources
+    local orphaned_pvcs=$(kubectl get pvc -n "$DEVTRON_NAMESPACE" --no-headers 2>/dev/null | grep -v "Bound" | wc -l)
+    if [ "$orphaned_pvcs" -gt 0 ]; then
+        print_warning "⚠️  Found $orphaned_pvcs orphaned PVCs (should be 0 with new configuration)"
+        ((issues_found++))
+    else
+        print_success "✅ No orphaned PVCs found"
+    fi
+
+    # Summary
+    print_section_end
+
+    if [ $issues_found -eq 0 ]; then
+        print_success "🎉 Installation health check PASSED - Devtron appears to be working correctly!"
+        return 0
+    else
+        print_warning "⚠️  Found $issues_found issue(s) that may need attention"
+        print_info "Run troubleshooting option 2 for advanced diagnostics"
+        return 1
+    fi
+}
 
 # Check if script is being sourced or executed
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
