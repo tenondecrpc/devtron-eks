@@ -57,7 +57,7 @@ npm install -g aws-cdk
 
 ```bash
 # Desplegar cluster EKS completo con add-ons
-`npm run deploy`
+npm run deploy
 ```
 
 **¿Qué hace esto?**
@@ -67,6 +67,8 @@ npm install -g aws-cdk
 - ✅ **Verificación**: Confirma que todo esté funcionando correctamente
 - 📋 **Próximo paso**: Sigue [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md) e [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
 
+> ⚠️ **Importante**: Antes de ejecutar `npm run deploy`, asegúrate de tener configuradas las variables de entorno. Ve a la sección **"Configurar Variables de Entorno"** más abajo.
+
 ### 🔄 Opción Paso a Paso (Manual)
 
 ### 1. Configurar AWS
@@ -74,12 +76,12 @@ npm install -g aws-cdk
 # Configura tu perfil AWS (elige una opción):
 
 # Opción A: Access Keys (simple)
-aws configure --profile EKS_PROFILE
+aws configure --profile AWS_PROFILE
 # Ingresa tu Access Key ID, Secret Access Key, región us-east-1
 
 # Opción B: SSO (para organizaciones)
-aws configure sso --profile EKS_PROFILE
-aws sso login --profile EKS_PROFILE
+aws configure sso --profile AWS_PROFILE
+aws sso login --profile AWS_PROFILE
 ```
 
 ### 2. Preparar el proyecto
@@ -88,29 +90,65 @@ aws sso login --profile EKS_PROFILE
 npm install
 
 # Configura CDK (solo primera vez)
-npx cdk bootstrap --profile EKS_PROFILE
+npx cdk bootstrap --profile AWS_PROFILE
 
 # Compila el proyecto
 npm run build
 ```
 
-### 3. Desplegar EKS Cluster
+### 3. Configurar Variables de Entorno
 ```bash
-# Desplegar cluster EKS con todos los add-ons
-npx cdk deploy --require-approval never --profile EKS_PROFILE
+# Configura las variables de entorno del proyecto
+
+# Opción A: Variables de entorno temporales (sesión actual)
+export ENV_NAME=dev
+export PROJECT_NAME=devtron
+export AWS_ACCOUNT=xxxx81713846
+export AWS_REGION=us-east-1
+
+# Opción B: Crear archivo .env (recomendado para desarrollo)
+cat > .env << EOF
+ENV_NAME=dev
+PROJECT_NAME=devtron
+AWS_ACCOUNT=xxxx81713846
+AWS_REGION=us-east-1
+EOF
+
+# Opción C: Cargar desde archivo .env existente
+source .env
+
+# Verificar configuración
+echo "=== Variables del Proyecto ==="
+echo "ENV_NAME: $ENV_NAME"
+echo "PROJECT_NAME: $PROJECT_NAME"
+echo "AWS_ACCOUNT: $AWS_ACCOUNT"
+echo "AWS_REGION: $AWS_REGION"
+echo "=============================="
 ```
 
-### 4. Configurar kubectl
+**📋 Variables del proyecto:**
+- **`ENV_NAME`**: Entorno de despliegue (dev, staging, prod)
+- **`PROJECT_NAME`**: Nombre del proyecto (devtron)
+- **`AWS_ACCOUNT`**: ID de tu cuenta AWS (xxxx81713846)
+- **`AWS_REGION`**: Región donde se desplegará el cluster (us-east-1)
+
+### 4. Desplegar EKS Cluster
+```bash
+# Desplegar cluster EKS con todos los add-ons
+npx cdk deploy --require-approval never --profile AWS_PROFILE
+```
+
+### 5. Configurar kubectl
 ```bash
 # Configura kubectl para acceder al cluster
-aws eks update-kubeconfig --region us-east-1 --name your-project-name-dev-cluster --profile EKS_PROFILE
+aws eks update-kubeconfig --region us-east-1 --name your-project-name-dev-cluster --profile AWS_PROFILE
 
 # Verificar conexión
 kubectl cluster-info
 kubectl get nodes
 ```
 
-### 5. Verificar instalación
+### 6. Verificar instalación
 ```bash
 # Ver todos los recursos del cluster
 kubectl get all --all-namespaces
@@ -122,7 +160,7 @@ kubectl get pods -n kube-system
 kubectl get nodes --label-columns=eks.amazonaws.com/nodegroup
 ```
 
-### 6. Próximos Pasos
+### 7. Próximos Pasos
 ```bash
 # Después de tener el cluster listo:
 # 1. Instala kubectl y Helm siguiendo [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md)
@@ -135,13 +173,36 @@ kubectl get nodes --label-columns=eks.amazonaws.com/nodegroup
 ### Problema: "No se puede conectar al cluster"
 ```bash
 # Verifica tu perfil AWS
-aws sts get-caller-identity --profile EKS_PROFILE
+aws sts get-caller-identity --profile AWS_PROFILE
 
 # Actualiza la configuración de kubectl
-aws eks update-kubeconfig --region us-east-1 --name your-project-name-dev-cluster --profile EKS_PROFILE
+aws eks update-kubeconfig --region us-east-1 --name your-project-name-dev-cluster --profile AWS_PROFILE
 
 # Verifica la conexión
 kubectl cluster-info
+```
+
+### Problema: "Variables de entorno no configuradas"
+```bash
+# Verifica que las variables estén configuradas
+echo "ENV_NAME: $ENV_NAME"
+echo "PROJECT_NAME: $PROJECT_NAME"
+echo "AWS_ACCOUNT: $AWS_ACCOUNT"
+echo "AWS_REGION: $AWS_REGION"
+
+# Si están vacías, configúralas:
+export ENV_NAME=dev
+export PROJECT_NAME=devtron
+export AWS_ACCOUNT=xxxx81713846
+export AWS_REGION=us-east-1
+
+# O crea un archivo .env:
+cat > .env << EOF
+ENV_NAME=dev
+PROJECT_NAME=devtron
+AWS_ACCOUNT=xxxx81713846
+AWS_REGION=us-east-1
+EOF
 ```
 
 ### Problema: "Nodes no están Ready"
@@ -174,7 +235,7 @@ kubectl top pods --all-namespaces
 ### Limpieza completa:
 ```bash
 # Eliminar todo el cluster EKS (¡cuidado!)
-npx cdk destroy --profile EKS_PROFILE
+npx cdk destroy --profile AWS_PROFILE
 ```
 
 ## 📚 Más información
@@ -203,6 +264,7 @@ npx cdk destroy --profile EKS_PROFILE
   - **Logs**: `npm run logs` (ver logs de pods)
   - **Destruir**: `npm run destroy` (elimina todo el cluster)
 - **Configuración**: Edita `lib/stack/eks/index.ts` para personalizar el cluster
+- **Variables de entorno**: Configura `ENV_NAME`, `PROJECT_NAME`, `AWS_ACCOUNT`, `AWS_REGION` antes del deploy
 - **Outputs optimizados**: Eliminados duplicados, agregados comandos útiles
 
 ## 🛠️ Scripts Disponibles
@@ -253,7 +315,7 @@ npx cdk destroy --profile EKS_PROFILE
 
 **Si el cluster tiene un nombre diferente, conecta manualmente:**
 ```bash
-aws eks update-kubeconfig --region us-east-1 --name TU-CLUSTER-NAME --profile EKS_PROFILE
+aws eks update-kubeconfig --region us-east-1 --name TU-CLUSTER-NAME --profile AWS_PROFILE
 ```
 
 ## 🔄 Versiones de Kubernetes
@@ -369,3 +431,81 @@ Una vez instalado Devtron, podrás:
 | **[INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)** | Instalar Devtron en EKS | 15-20 min |
 
 ¡Sigue estas guías en orden para tener un entorno completo de desarrollo con Kubernetes y Devtron! 🚀
+
+## 🔧 Variables de Entorno del Proyecto
+
+### 📋 Variables Esenciales para CDK Deploy
+
+**Antes de ejecutar `npm run deploy`, configura estas variables:**
+
+```bash
+# Variables del proyecto (obligatorias)
+export ENV_NAME=dev
+export PROJECT_NAME=devtron
+export AWS_ACCOUNT=xxxx81713846
+export AWS_REGION=us-east-1
+```
+
+### 🗂️ Crear Archivo .env (Recomendado)
+
+```bash
+# Crear archivo .env en la raíz del proyecto
+cat > .env << EOF
+ENV_NAME=dev
+PROJECT_NAME=devtron
+AWS_ACCOUNT=xxxx81713846
+AWS_REGION=us-east-1
+EOF
+
+# Cargar variables desde el archivo
+source .env
+```
+
+### ✅ Verificar Configuración
+
+```bash
+# Verificar que todas las variables estén configuradas
+echo "=== Variables del Proyecto ==="
+echo "ENV_NAME: $ENV_NAME"
+echo "PROJECT_NAME: $PROJECT_NAME"
+echo "AWS_ACCOUNT: $AWS_ACCOUNT"
+echo "AWS_REGION: $AWS_REGION"
+echo "============================="
+
+# Verificar que las variables no estén vacías
+if [ -z "$ENV_NAME" ] || [ -z "$PROJECT_NAME" ] || [ -z "$AWS_ACCOUNT" ] || [ -z "$AWS_REGION" ]; then
+    echo "❌ Error: Algunas variables están vacías"
+    exit 1
+else
+    echo "✅ Todas las variables están configuradas correctamente"
+fi
+```
+
+### 🚨 Problemas Comunes
+
+**Si obtienes errores de variables no definidas:**
+```bash
+# Error: ENV_NAME is not set
+export ENV_NAME=dev
+
+# Error: PROJECT_NAME is not set
+export PROJECT_NAME=devtron
+
+# Error: AWS_ACCOUNT is not set
+export AWS_ACCOUNT=xxxx81713846
+
+# Error: AWS_REGION is not set
+export AWS_REGION=us-east-1
+```
+
+**Para desarrollo local persistente:**
+```bash
+# Agregar a tu ~/.bashrc o ~/.zshrc
+echo 'export ENV_NAME=dev' >> ~/.bashrc
+echo 'export PROJECT_NAME=devtron' >> ~/.bashrc
+echo 'export AWS_ACCOUNT=xxxx81713846' >> ~/.bashrc
+echo 'export AWS_REGION=us-east-1' >> ~/.bashrc
+
+# Recargar configuración
+source ~/.bashrc
+```

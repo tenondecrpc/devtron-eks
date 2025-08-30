@@ -75,7 +75,7 @@ export class EksFactory extends Construct {
 
         // Useful commands
         new CfnOutput(this, 'EksKubectlConfig', {
-            value: `aws eks update-kubeconfig --region ${region} --name ${clusterName} --profile EKS_PROFILE`,
+            value: `aws eks update-kubeconfig --region ${region} --name ${clusterName} --profile AWS_PROFILE`,
             description: 'Command to configure kubectl for this cluster',
         });
 

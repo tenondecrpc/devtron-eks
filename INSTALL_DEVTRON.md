@@ -27,7 +27,7 @@ Esta guía proporciona los pasos detallados para instalar Devtron con CI/CD en u
    - **Versión mínima requerida:** kubectl 1.24+, Helm 3.x
 
 #### AWS y Cluster
-2. **AWS CLI configurado** con perfil `EKS_PROFILE`
+2. **AWS CLI configurado** con perfil `AWS_PROFILE`
 3. **Cluster EKS** desplegado y accesible
 4. **Permisos IAM** adecuados para EKS
 
@@ -45,7 +45,7 @@ Para conectar al cluster EKS:
    npm run connect-cluster
 
 2. Opción manual (especifica el nombre del cluster):
-   aws eks update-kubeconfig --region us-east-1 --name TU-CLUSTER-NAME --profile EKS_PROFILE
+   aws eks update-kubeconfig --region us-east-1 --name TU-CLUSTER-NAME --profile AWS_PROFILE
 
 Después de conectar, verifica con:
    npm run status
