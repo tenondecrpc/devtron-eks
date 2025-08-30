@@ -346,7 +346,7 @@ npm run status            # View cluster status
 | `npm run nodes` | Node group information | Instantaneous |
 | `npm run events` | Recent cluster events | Instantaneous |
 | `npm run logs <pod>` | View logs of specific pod | Instantaneous |
-| `npm run fix-lb-public` | Fix LoadBalancer for public access | 3-7 min |
+| `npm run fix-devtron-service` | Fix Devtron service selector and LoadBalancer | 3-7 min |
 | `npm run verify-lb` | Verify LoadBalancer status | Instantaneous |
 
 ### Interactive Commands:

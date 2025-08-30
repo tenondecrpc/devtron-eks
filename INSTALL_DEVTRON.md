@@ -64,30 +64,93 @@ kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWOR
 - **Username:** `admin`
 - **Password:** [obtained from the command above]
 
-### ⚠️ Important: LoadBalancer Internet-Facing
+### ⚠️ Important: Fix Devtron Service Configuration
 
-If you cannot access from the internet, configure the LoadBalancer:
+After Devtron installation, the service needs to be configured correctly for internet access:
 
 ```bash
-npm run fix-lb-public
+# Fix both the service selector and LoadBalancer annotations
+kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}},"metadata":{"annotations":{"service.beta.kubernetes.io/aws-load-balancer-type":"nlb","service.beta.kubernetes.io/aws-load-balancer-scheme":"internet-facing","service.beta.kubernetes.io/aws-load-balancer-nlb-target-type":"ip"}}}'
+```
+
+**Or use the npm script:**
+```bash
+npm run fix-devtron-service
 ```
 
 **⏱️ Estimated time: 3-7 minutes** (wait for AWS to recreate the LoadBalancer)
 
+**What this fixes:**
+- **Service Selector**: Changes from `app=devtron` to `app=dashboard` (correct pod selector)
+- **LoadBalancer Type**: Configures NLB (Network Load Balancer)
+- **Internet Access**: Enables `internet-facing` scheme
+- **Target Type**: Sets to `ip` for better performance
+
 ## Useful Commands
 
 ```bash
-npm run status
-npm run devtron-status
-npm run verify-lb
-npm run cost-analysis
+npm run status                    # Check cluster status
+npm run devtron-status           # Get Devtron URL and admin password
+npm run verify-lb               # Verify LoadBalancer status
+npm run fix-devtron-service     # Fix service selector and LoadBalancer config
+npm run cost-analysis           # Cost analysis
 ```
 
 ## Basic Troubleshooting
 
 - **Slow installation:** Wait 15-20 minutes, it's normal
-- **Not accessible:** Run `npm run fix-lb-public` and wait 3-7 minutes
+- **Not accessible:** Run `npm run fix-devtron-service` and wait 3-7 minutes
+- **Service selector issue:** If LoadBalancer shows no endpoints, the service selector needs to be fixed
 - **Error logs:** `kubectl logs -f -l app=inception -n devtroncd`
+- **Check service configuration:** `kubectl describe svc devtron-service -n devtroncd`
+
+## Step 5: Access Devtron Dashboard
+
+Once the installation is complete and the LoadBalancer is ready, access Devtron:
+
+### Get the Devtron URL
+
+```bash
+# Option 1: Get the hostname
+kubectl get svc -n devtroncd devtron-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+
+# Option 2: Get the complete HTTPS URL
+kubectl get svc -n devtroncd devtron-service -o jsonpath='https://{.status.loadBalancer.ingress[0].hostname}'
+```
+
+### Get Admin Credentials
+
+```bash
+# Get admin password
+kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
+```
+
+### Login Information
+
+- **URL**: [obtained from the command above]
+- **Username**: `admin`
+- **Password**: [obtained from the command above]
+
+### Verify LoadBalancer Status
+
+```bash
+# Check if LoadBalancer is ready
+kubectl get svc -n devtroncd devtron-service
+
+# Expected output should show EXTERNAL-IP (hostname) when ready
+```
+
+**⏱️ Estimated time for LoadBalancer**: 3-7 minutes after Devtron installation completes
+
+### Troubleshooting Access Issues
+
+If you cannot access the URL:
+
+1. **Wait for LoadBalancer**: The LoadBalancer needs 3-7 minutes to be fully provisioned by AWS
+2. **Check LoadBalancer status**: Ensure the EXTERNAL-IP shows a hostname
+3. **Fix service configuration**: Run `npm run fix-devtron-service` to fix both selector and LoadBalancer settings
+4. **Check service endpoints**: Verify that `kubectl describe svc devtron-service -n devtroncd` shows valid endpoints
+5. **Verify installation**: Run `npm run devtron-status` to check Devtron status
 
 ## Resources
 

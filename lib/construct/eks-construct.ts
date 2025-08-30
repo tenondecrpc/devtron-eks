@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as eksv2 from '@aws-cdk/aws-eks-v2-alpha';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import { KubectlV32Layer } from '@aws-cdk/lambda-layer-kubectl-v32';
 import { Construct } from 'constructs';
 
 export interface EksConstructProps {
@@ -72,7 +73,10 @@ export class EksConstruct extends Construct {
             'Allow HTTPS traffic from anywhere'
         );
 
-        // Create EKS Cluster - kubectl provider should be automatically configured
+        // Create kubectl layer for Helm chart and manifest management
+        const kubectlLayer = new KubectlV32Layer(this, 'KubectlLayer');
+
+        // Create EKS Cluster with kubectl provider configured
         this.cluster = new eksv2.Cluster(this, 'EksCluster', {
             clusterName: props.clusterName,
             version: props.kubernetesVersion || eksv2.KubernetesVersion.V1_32,
@@ -82,6 +86,10 @@ export class EksConstruct extends Construct {
                 { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
                 { subnetType: ec2.SubnetType.PUBLIC }
             ],
+            // Configure kubectl provider for Helm charts and manifests
+            kubectlProviderOptions: {
+                kubectlLayer: kubectlLayer,
+            },
         });
 
         // EBS CSI DRIVER PERMISSIONS:
@@ -194,18 +202,18 @@ export class EksConstruct extends Construct {
     }
 
     /**
-     * Create Devtron service with internet-facing LoadBalancer configuration
-     * This should be called after Devtron is installed
+     * Fix Devtron service configuration for internet-facing LoadBalancer
+     * This patches the existing Devtron service to ensure proper configuration
      * ⏱️ Time estimate: 3-7 minutes (AWS LoadBalancer recreation + DNS propagation)
      */
-    public createDevtronService(): eksv2.KubernetesManifest {
-        return new eksv2.KubernetesManifest(this, 'DevtronServicePatch', {
+    public fixDevtronService(): eksv2.KubernetesManifest {
+        return new eksv2.KubernetesManifest(this, 'DevtronServiceFix', {
             cluster: this.cluster,
             manifest: [{
                 apiVersion: 'v1',
                 kind: 'Service',
                 metadata: {
-                    name: 'devtron-service-patch',
+                    name: 'devtron-service',
                     namespace: 'devtroncd',
                     annotations: {
                         // These annotations will make the LoadBalancer internet-facing
@@ -220,7 +228,7 @@ export class EksConstruct extends Construct {
                 spec: {
                     type: 'LoadBalancer',
                     selector: {
-                        app: 'devtron'
+                        app: 'dashboard'  // Correct selector for Devtron dashboard pods
                     },
                     ports: [{
                         name: 'devtron',

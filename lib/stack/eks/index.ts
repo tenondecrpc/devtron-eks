@@ -100,16 +100,22 @@ export class EksFactory extends Construct {
         // Install Devtron via Helm
         const devtronChart = this.cluster.installDevtron();
 
-        // Create service with internet-facing configuration
-        const devtronService = this.cluster.createDevtronService();
+        // Fix existing Devtron service configuration for internet-facing access
+        const devtronServiceFix = this.cluster.fixDevtronService();
 
-        // Add dependency to ensure service is created after Devtron is installed
-        devtronService.node.addDependency(devtronChart);
+        // Add dependency to ensure service fix is applied after Devtron is installed
+        devtronServiceFix.node.addDependency(devtronChart);
 
         // Add outputs for Devtron
-        new CfnOutput(this, 'DevtronUrl', {
+        new CfnOutput(this, 'DevtronUrlCommand', {
             value: `kubectl get svc devtron-service -n devtroncd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'`,
-            description: 'Devtron dashboard URL (wait for LoadBalancer to be ready)',
+            description: 'Command to get Devtron dashboard URL',
+        });
+
+        // Output for direct URL access (will be available after LoadBalancer is ready)
+        new CfnOutput(this, 'DevtronDashboardAccess', {
+            value: 'After LoadBalancer is ready: kubectl get svc devtron-service -n devtroncd -o jsonpath="https://{.status.loadBalancer.ingress[0].hostname}"',
+            description: 'Devtron dashboard access URL (wait for LoadBalancer to be ready - ~3-7 minutes)',
         });
 
         new CfnOutput(this, 'DevtronAdminPassword', {

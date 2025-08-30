@@ -19,6 +19,7 @@
     "events": "kubectl get events --sort-by=.metadata.creationTimestamp",
     "logs": "kubectl logs",
     "fix-lb-public": "echo '⏱️ Configurando LoadBalancer internet-facing (3-7 minutos)...' && kubectl patch svc devtron-service -n devtroncd --type merge -p '{\"metadata\":{\"annotations\":{\"service.beta.kubernetes.io/aws-load-balancer-type\":\"nlb\",\"service.beta.kubernetes.io/aws-load-balancer-scheme\":\"internet-facing\",\"service.beta.kubernetes.io/aws-load-balancer-nlb-target-type\":\"ip\"}}}' && echo '✅ Configuración aplicada. Espera 3-7 minutos para que AWS complete la recreación del LoadBalancer.'",
+    "fix-devtron-service": "echo '🔧 Arreglando configuración completa del servicio Devtron...' && echo '   1. Corrigiendo selector del servicio (app=devtron → app=dashboard)' && echo '   2. Configurando LoadBalancer internet-facing' && kubectl patch svc devtron-service -n devtroncd --type merge -p '{\"spec\":{\"selector\":{\"app\":\"dashboard\"}},\"metadata\":{\"annotations\":{\"service.beta.kubernetes.io/aws-load-balancer-type\":\"nlb\",\"service.beta.kubernetes.io/aws-load-balancer-scheme\":\"internet-facing\",\"service.beta.kubernetes.io/aws-load-balancer-nlb-target-type\":\"ip\"}}}' && echo '✅ Servicio corregido. Espera 3-7 minutos para que AWS complete la recreación del LoadBalancer.'",
     "verify-lb": "echo '🔍 Verificando estado del LoadBalancer...' && kubectl get svc devtron-service -n devtroncd -o wide",
     "devtron-status": "echo '📊 Obteniendo URL y contraseña de Devtron...' && echo 'URL:' && kubectl get svc devtron-service -n devtroncd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' && echo '' && echo 'Contraseña Admin:' && kubectl get secret devtron-secret -n devtroncd -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d",
     "time-estimates": "echo '⏱️ TIEMPOS ESTIMADOS DE INSTALACIÓN ⏱️' && echo '' && echo '📋 PROCESO COMPLETO: 20-50 minutos' && echo '' && echo '├── CDK Deploy: 5-15 minutos' && echo '├── Helm Install Devtron: 3-8 minutos' && echo '├── Inicialización completa: 10-20 minutos' && echo '├── LoadBalancer internet-facing: 3-7 minutos' && echo '└── Total aproximado: 20-50 minutos' && echo '' && echo '💡 Usa \"npm run status\" para ver progreso actual'",
@@ -36,9 +37,10 @@
     "typescript": "~5.6.3"
   },
   "dependencies": {
+    "@aws-cdk/aws-eks-v2-alpha": "^2.213.0-alpha.0",
+    "@aws-cdk/lambda-layer-kubectl-v32": "^2.1.0",
     "aws-cdk-lib": "^2.213.0",
     "constructs": "^10.0.0",
-    "dotenv": "^17.2.1",
-    "@aws-cdk/aws-eks-v2-alpha": "^2.213.0-alpha.0"
+    "dotenv": "^17.2.1"
   }
 }
