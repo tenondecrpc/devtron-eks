@@ -65,7 +65,7 @@ npm install -g aws-cdk
 - ✅ **Auto-configuración**: Instala todos los add-ons esenciales automáticamente
 - ✅ **Outputs**: Muestra todos los comandos y endpoints importantes
 - ✅ **Verificación**: Confirma que todo esté funcionando correctamente
-- 📋 **Próximo paso**: Sigue [`INSTALL_KUBERNETES.md`](`INSTALL_KUBERNETES.md`) e [`INSTALL_DEVTRON.md`](`INSTALL_DEVTRON.md`)
+- 📋 **Próximo paso**: Sigue [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md) e [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
 
 ### 🔄 Opción Paso a Paso (Manual)
 
@@ -125,8 +125,8 @@ kubectl get nodes --label-columns=eks.amazonaws.com/nodegroup
 ### 6. Próximos Pasos
 ```bash
 # Después de tener el cluster listo:
-# 1. Instala kubectl y Helm siguiendo `INSTALL_KUBERNETES.md`
-# 2. Instala Devtron siguiendo `INSTALL_DEVTRON.md`
+# 1. Instala kubectl y Helm siguiendo [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md)
+# 2. Instala Devtron siguiendo [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
 # 3. ¡Comienza a desplegar tus aplicaciones!
 ```
 
@@ -182,20 +182,20 @@ npx cdk destroy --profile EKS_PROFILE
 - **Documentación AWS EKS**: https://docs.aws.amazon.com/eks/
 - **AWS CDK Documentation**: https://docs.aws.amazon.com/cdk/
 - **Configuraciones personalizadas**: Edita ``lib/construct/eks-construct.ts``
-- 📖 **[Guía de instalación de Kubernetes](`INSTALL_KUBERNETES.md`)**: Instalar kubectl y Helm
-- 📖 **[Guía de instalación de Devtron](`INSTALL_DEVTRON.md`)**: Desplegar Devtron en EKS
+- 📖 **[Guía de instalación de Kubernetes](INSTALL_KUBERNETES.md)**: Instalar kubectl y Helm
+- 📖 **[Guía de instalación de Devtron](INSTALL_DEVTRON.md)**: Desplegar Devtron en EKS
 
 ## 🎯 Consejos
 
 - **Primera vez**: Usa el workflow de despliegue directo con `npm run deploy`
-- **Después del deploy**: Sigue las guías [`INSTALL_KUBERNETES.md`](`INSTALL_KUBERNETES.md`) e [`INSTALL_DEVTRON.md`](`INSTALL_DEVTRON.md`)
+- **Después del deploy**: Sigue las guías [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md) e [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
 - **Producción**: Aumenta el número de nodos y configura auto-scaling según tus necesidades
 - **Desarrollo**: El cluster está listo para desplegar tus aplicaciones inmediatamente
 - **Comandos rápidos**:
-  - **Desplegar**: ``npm run deploy`` (despliega cluster EKS)
+  - **Desplegar**: `npm run deploy` (despliega cluster EKS)
   - **Conectar**: `npm run connect-cluster` (configura kubectl automáticamente)
-  - **Ayuda conectar**: ``npm run connect`` (muestra instrucciones de conexión)
-  - **Verificar**: ``npm run status`` (muestra estado del cluster)
+  - **Ayuda conectar**: `npm run connect` (muestra instrucciones de conexión)
+  - **Verificar**: `npm run status` (muestra estado del cluster)
   - **Pods**: `npm run pods` (lista todos los pods)
   - **Servicios**: `npm run services` (lista todos los servicios)
   - **Nodos**: `npm run nodes` (información de node groups)
@@ -328,14 +328,14 @@ Una vez que tengas tu cluster EKS desplegado y funcionando, sigue estos pasos pa
 ### 1. 🛠️ Preparar tu Entorno Local
 
 **Instala los clientes necesarios en tu máquina:**
-- 📖 **[Sigue la guía completa](`INSTALL_KUBERNETES.md`)** para instalar kubectl y Helm
+- 📖 **[Sigue la guía completa](INSTALL_KUBERNETES.md)** para instalar kubectl y Helm
 - ⏱️ **Tiempo estimado:** 10-15 minutos
 - ✅ **Verificación:** `kubectl version --client` y `helm version`
 
 ### 2. 🚀 Instalar Devtron
 
 **Despliega Devtron con CI/CD en tu cluster:**
-- 📖 **[Sigue la guía detallada](`INSTALL_DEVTRON.md`)** para instalar Devtron
+- 📖 **[Sigue la guía detallada](INSTALL_DEVTRON.md)** para instalar Devtron
 - 🎯 **Incluye:** Conexión al cluster, instalación con Helm, configuración inicial
 - ✅ **Resultado:** Dashboard de Devtron accesible
 
@@ -344,10 +344,10 @@ Una vez que tengas tu cluster EKS desplegado y funcionando, sigue estos pasos pa
 **Conecta a tu cluster y verifica todo esté funcionando:**
 ```bash
 # Conectar automáticamente al cluster
-``npm run connect`-cluster`
+npm run connect-cluster
 
 # Verificar el estado del cluster
-`npm run status`
+npm run status
 
 # Ver todos los pods (después de instalar Devtron)
 npm run pods
@@ -365,7 +365,7 @@ Una vez instalado Devtron, podrás:
 
 | Guía | Propósito | Tiempo Estimado |
 |------|-----------|----------------|
-| **[`INSTALL_KUBERNETES.md`](`INSTALL_KUBERNETES.md`)** | Instalar kubectl y Helm | 10-15 min |
-| **[`INSTALL_DEVTRON.md`](`INSTALL_DEVTRON.md`)** | Instalar Devtron en EKS | 15-20 min |
+| **[INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md)** | Instalar kubectl y Helm | 10-15 min |
+| **[INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)** | Instalar Devtron en EKS | 15-20 min |
 
 ¡Sigue estas guías en orden para tener un entorno completo de desarrollo con Kubernetes y Devtron! 🚀
