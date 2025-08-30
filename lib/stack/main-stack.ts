@@ -15,19 +15,13 @@ export class MainStack extends cdk.Stack {
     const { params } = props;
     const { envName, projectName } = params;
 
-    // Create EKS Factory with Devtron installation deferred
+    // Create EKS cluster with essential add-ons
     const eksFactory = new EksFactory(this, "EksFactory", {
       params
     });
 
-    // Install Devtron after cluster is fully created
-    eksFactory.installDevtron({
-      useLoadBalancer: true,
-      enableMonitoring: true,
-      storageClass: 'gp2'
-    });
-
     cdk.Tags.of(this).add('Project', projectName);
     cdk.Tags.of(this).add('Environment', envName);
+    cdk.Tags.of(this).add('ManagedBy', 'CDK');
   }
 }

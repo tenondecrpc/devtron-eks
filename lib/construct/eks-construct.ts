@@ -35,7 +35,7 @@ export class EksConstruct extends Construct {
         // Create EKS Cluster - kubectl provider should be automatically configured
         this.cluster = new eksv2.Cluster(this, 'EksCluster', {
             clusterName: props.clusterName,
-            version: props.kubernetesVersion || eksv2.KubernetesVersion.V1_31,
+            version: props.kubernetesVersion || eksv2.KubernetesVersion.V1_32,
             vpc: this.vpc,
         });
 
@@ -68,31 +68,7 @@ export class EksConstruct extends Construct {
             this.addClusterAdmin(props.adminPrincipalArn, props.authMethod);
         }
 
-        // Output important values
-        new cdk.CfnOutput(this, 'ClusterName', {
-            value: this.cluster.clusterName,
-            description: 'EKS Cluster Name',
-        });
-
-        new cdk.CfnOutput(this, 'ClusterEndpoint', {
-            value: this.cluster.clusterEndpoint,
-            description: 'EKS Cluster Endpoint',
-        });
-
-        new cdk.CfnOutput(this, 'ClusterArn', {
-            value: this.cluster.clusterArn,
-            description: 'EKS Cluster ARN',
-        });
-
-        new cdk.CfnOutput(this, 'ClusterSecurityGroupId', {
-            value: this.cluster.clusterSecurityGroup.securityGroupId,
-            description: 'EKS Cluster Security Group ID',
-        });
-
-        new cdk.CfnOutput(this, 'OpenIdConnectProviderArn', {
-            value: this.cluster.openIdConnectProvider.openIdConnectProviderArn,
-            description: 'OIDC Provider ARN for IRSA',
-        });
+        // Outputs are handled by EksFactory to avoid duplicates
     }
 
     /**
@@ -117,6 +93,9 @@ export class EksConstruct extends Construct {
         repository?: string;
         namespace?: string;
         values?: any;
+        createNamespace?: boolean;
+        wait?: boolean;
+        timeout?: cdk.Duration;
     }): eksv2.HelmChart {
         return new eksv2.HelmChart(this, id, {
             cluster: this.cluster,
@@ -124,6 +103,9 @@ export class EksConstruct extends Construct {
             repository: options.repository,
             namespace: options.namespace || 'default',
             values: options.values,
+            createNamespace: options.createNamespace,
+            wait: options.wait,
+            timeout: options.timeout,
         });
     }
 

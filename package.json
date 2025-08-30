@@ -1,14 +1,33 @@
 {
-  "name": "devtron-eks",
+  "name": "eks-cdk",
   "version": "0.1.0",
   "bin": {
     "main": "bin/main.js"
   },
   "scripts": {
     "build": "tsc",
-    "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "deploy": "cdk deploy --require-approval never --profile EKS_PROFILE",
+    "destroy": "cdk destroy --profile EKS_PROFILE",
+    "connect": "echo 'Para conectar al cluster EKS:' && echo '' && echo '1. Opción automática (usa el nombre por defecto):' && echo '   npm run connect-cluster' && echo '' && echo '2. Opción manual (especifica el nombre del cluster):' && echo '   aws eks update-kubeconfig --region us-east-1 --name TU-CLUSTER-NAME --profile EKS_PROFILE' && echo '' && echo 'Después de conectar, verifica con:' && echo '   npm run status'",
+    "connect-cluster": "echo 'Conectando al cluster EKS...' && aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile EKS_PROFILE && echo '✅ Conexión configurada. Verificando...' && kubectl cluster-info",
+    "status": "kubectl cluster-info && kubectl get nodes",
+    "pods": "kubectl get pods -A",
+    "services": "kubectl get svc -A",
+    "nodes": "kubectl get nodes --label-columns=eks.amazonaws.com/nodegroup",
+    "events": "kubectl get events --sort-by=.metadata.creationTimestamp",
+    "logs": "kubectl logs",
+    "top": "kubectl top nodes && echo '---' && kubectl top pods -A",
+    "storage": "kubectl get storageclass && kubectl get pvc -A",
+    "health": "kubectl get nodes && kubectl get pods -A --field-selector=status.phase!=Running",
+    "scale": "kubectl scale deployment",
+    "describe": "kubectl describe",
+    "port-forward": "kubectl port-forward",
+    "exec": "kubectl exec -it",
+    "apply": "kubectl apply -f",
+    "delete": "kubectl delete",
+    "watch": "kubectl get pods -A -w"
   },
   "devDependencies": {
     "@types/dotenv": "^6.1.1",
