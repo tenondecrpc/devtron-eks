@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as eksv2 from '@aws-cdk/aws-eks-v2-alpha';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 export interface EksConstructProps {
@@ -84,21 +85,40 @@ export class EksConstruct extends Construct {
         });
 
         // EBS CSI DRIVER PERMISSIONS:
-        // REMOVED: Manual EBS CSI Policy - Not needed when using EKS Add-on
+        // FIXED: Add EBS permissions to Node Group IAM Role
         //
-        // WHY REMOVED:
-        // - When installing 'aws-ebs-csi-driver' as EKS Add-on (line ~185), AWS automatically:
-        //   1. Creates the necessary IAM role with required permissions
-        //   2. Associates it with the EBS CSI Driver service account
-        //   3. Grants permissions for: ec2:CreateVolume, ec2:AttachVolume, etc.
+        // WHY FIXED:
+        // - EKS Add-on creates permissions for CSI Driver service account
+        // - But Node Group needs permissions to create/attach EBS volumes
+        // - Node Group role needs explicit EBS permissions for PVC provisioning
         //
-        // MANUAL POLICY WAS REDUNDANT and could cause conflicts
+
+        // Create IAM policy for EBS operations
+        const ebsPolicy = new iam.ManagedPolicy(this, 'EbsCsiNodePolicy', {
+            description: 'Allows EKS nodes to perform EBS operations for persistent volumes',
+            statements: [
+                new iam.PolicyStatement({
+                    effect: iam.Effect.ALLOW,
+                    actions: [
+                        'ec2:CreateVolume',
+                        'ec2:AttachVolume',
+                        'ec2:DetachVolume',
+                        'ec2:DeleteVolume',
+                        'ec2:DescribeVolumes',
+                        'ec2:DescribeVolumesModifications',
+                        'ec2:CreateTags',
+                        'ec2:DescribeTags',
+                    ],
+                    resources: ['*'],
+                }),
+            ],
+        });
 
         // Create Managed Node Group with EBS permissions
         this.nodeGroup = new eksv2.Nodegroup(this, 'EksNodeGroup', {
             cluster: this.cluster,
             instanceTypes: props.nodeGroupInstanceTypes || [
-                new ec2.InstanceType('t3.medium'),
+                new ec2.InstanceType('t3.medium'), // Default optimized for cost
             ],
             minSize: props.minSize || 1,
             maxSize: props.maxSize || 3,
@@ -107,7 +127,8 @@ export class EksConstruct extends Construct {
             capacityType: eksv2.CapacityType.ON_DEMAND,
         });
 
-        // NOTE: No need to attach EBS CSI policy - handled by EKS Add-on automatically
+        // Attach EBS policy to the Node Group role
+        this.nodeGroup.role.addManagedPolicy(ebsPolicy);
 
         // VPC ENDPOINTS FOR ELB:
         // REMOVED: InterfaceVpcEndpoint for ELB - Not needed for public LoadBalancers
@@ -149,6 +170,67 @@ export class EksConstruct extends Construct {
         }
 
         // Outputs are handled by EksFactory to avoid duplicates
+    }
+
+    /**
+     * Install Devtron with CI/CD module and internet-facing LoadBalancer
+     * ⏱️ Time estimate: 3-8 minutes for Helm install + 10-20 minutes for full initialization
+     */
+    public installDevtron(): eksv2.HelmChart {
+        return new eksv2.HelmChart(this, 'DevtronHelmChart', {
+            cluster: this.cluster,
+            chart: 'devtron-operator',
+            repository: 'https://helm.devtron.ai',
+            namespace: 'devtroncd',
+            createNamespace: true,
+            values: {
+                installer: {
+                    modules: ['cicd']
+                }
+            },
+            // Wait for installation to complete
+            wait: false, // Set to false to avoid timeout issues (installation continues in background)
+        });
+    }
+
+    /**
+     * Create Devtron service with internet-facing LoadBalancer configuration
+     * This should be called after Devtron is installed
+     * ⏱️ Time estimate: 3-7 minutes (AWS LoadBalancer recreation + DNS propagation)
+     */
+    public createDevtronService(): eksv2.KubernetesManifest {
+        return new eksv2.KubernetesManifest(this, 'DevtronServicePatch', {
+            cluster: this.cluster,
+            manifest: [{
+                apiVersion: 'v1',
+                kind: 'Service',
+                metadata: {
+                    name: 'devtron-service-patch',
+                    namespace: 'devtroncd',
+                    annotations: {
+                        // These annotations will make the LoadBalancer internet-facing
+                        'service.beta.kubernetes.io/aws-load-balancer-type': 'nlb',
+                        'service.beta.kubernetes.io/aws-load-balancer-scheme': 'internet-facing',
+                        'service.beta.kubernetes.io/aws-load-balancer-nlb-target-type': 'ip',
+                        'service.beta.kubernetes.io/aws-load-balancer-subnets': this.getPublicSubnets()
+                            .map(subnet => subnet.subnetId)
+                            .join(',')
+                    }
+                },
+                spec: {
+                    type: 'LoadBalancer',
+                    selector: {
+                        app: 'devtron'
+                    },
+                    ports: [{
+                        name: 'devtron',
+                        port: 80,
+                        targetPort: 'devtron',
+                        protocol: 'TCP'
+                    }]
+                }
+            }]
+        });
     }
 
     /**

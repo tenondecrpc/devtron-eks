@@ -17,11 +17,11 @@ export class MainStack extends cdk.Stack {
 
     // Create EKS cluster with essential add-ons
     const eksFactory = new EksFactory(this, "EksFactory", {
-      params
+      params,
+      installDevtron: true // This can be done manually from INSTALL_DEVTRON.md
     });
 
     cdk.Tags.of(this).add('Project', projectName);
     cdk.Tags.of(this).add('Environment', envName);
-    cdk.Tags.of(this).add('ManagedBy', 'CDK');
   }
 }

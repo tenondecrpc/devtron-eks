@@ -1,112 +1,173 @@
-# 🚀 EKS CDK - Cluster Kubernetes en AWS
+# 🚀 EKS CDK - Kubernetes Cluster on AWS
 
-Despliega automáticamente un cluster Amazon EKS optimizado con add-ons esenciales usando AWS CDK.
+Automatically deploy an optimized Amazon EKS cluster with essential add-ons using AWS CDK.
 
-## ✨ Qué hace este proyecto
+## ✨ What this project does
 
-- **Despliega un cluster EKS** completamente configurado
-- **Instala add-ons esenciales** automáticamente (VPC CNI, CoreDNS, kube-proxy, EBS CSI Driver)
-- **Crea un Node Group** optimizado con auto-scaling
-- **Configura networking** con VPC dedicada
-- **Proporciona outputs detallados** para fácil acceso
-- **Implementa mejores prácticas** de seguridad y tagging
+- **Deploys a fully configured EKS cluster**
+- **Automatically installs essential add-ons** (VPC CNI, CoreDNS, kube-proxy, EBS CSI Driver)
+- **Creates an optimized Node Group** with auto-scaling
+- **Configures networking** with dedicated VPC
+- **Provides detailed outputs** for easy access
+- **Implements security best practices** and tagging
 
-## 📋 Requisitos previos
+## 📋 Prerequisites
 
-### Software necesario:
-- **Node.js** 20+
-- **AWS CLI v2**
-- **AWS CDK CLI**
-- **Cuenta AWS** con permisos para EKS, EC2, VPC, y IAM
+### Required Software:
+- **Node.js** 18+ (recommended 20 LTS)
+- **AWS CLI v2** (2.13.0+)
+- **AWS CDK CLI** (2.100.0+)
+- **AWS Account** with permissions for EKS, EC2, VPC, and IAM
 
-### Versiones de Kubernetes soportadas:
-- **1.33** (Próximamente - ver documentación de AWS `@aws-cdk/aws-eks-v2`)
-- **1.32** (Disponible en CDK `@aws-cdk/aws-eks-v2` - usada en el proyecto)
-- **1.31** (Soporte estándar)
-- **1.30** (Soporte extendido)
-- **1.29** (Soporte extendido)
+> ⚠️ **Note**: Make sure to use compatible versions. The project is tested with Node.js 20 LTS and AWS CDK 2.100+.
 
-> 📖 Para más información sobre versiones: [AWS EKS Kubernetes Versions](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html)
+### Supported Kubernetes Versions:
+- **1.33** (Coming soon - see AWS documentation for `@aws-cdk/aws-eks-v2`)
+- **1.32** (Available in CDK `@aws-cdk/aws-eks-v2` - used in the project)
+- **1.31** (Standard support)
+- **1.30** (Extended support)
+- **1.29** (Extended support)
 
-### Instalación rápida:
+> 📖 For more information about versions: [AWS EKS Kubernetes Versions](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html)
+
+### Quick Installation:
 
 **macOS:**
 ```bash
-brew install node awscli
-npm install -g aws-cdk
+brew install node@20
+brew link node@20
+brew install awscli
+npm install -g aws-cdk@latest
 ```
 
 **Linux/Ubuntu:**
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip && sudo ./aws/install
-npm install -g aws-cdk
+npm install -g aws-cdk@latest
 ```
 
-**Windows:**
+**Windows (PowerShell as Admin):**
 ```powershell
-choco install nodejs awscli
-npm install -g aws-cdk
+choco install nodejs-lts
+choco install awscli
+npm install -g aws-cdk@latest
 ```
 
-## 🚀 Inicio rápido (5 minutos)
+## 🚀 Quick Start (5 minutes)
 
-### ⚡ Opción Ultra-Rápida (1 comando)
+### ⚡ Ultra-Fast Option (1 command)
 
 ```bash
-# Desplegar cluster EKS completo con add-ons
 npm run deploy
 ```
 
-**¿Qué hace esto?**
-- ✅ **CDK Deploy**: Crea cluster EKS con VPC, Node Group y add-ons
-- ✅ **Auto-configuración**: Instala todos los add-ons esenciales automáticamente
-- ✅ **Outputs**: Muestra todos los comandos y endpoints importantes
-- ✅ **Verificación**: Confirma que todo esté funcionando correctamente
-- 📋 **Próximo paso**: Sigue [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md) e [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
+**What does this do?**
+- ✅ **CDK Deploy**: Creates EKS cluster with VPC, Node Group and add-ons
+- ✅ **Auto-configuration**: Automatically installs all essential add-ons
+- ✅ **Outputs**: Shows all important commands and endpoints
+- ✅ **Verification**: Confirms everything is working correctly
 
-> ⚠️ **Importante**: Antes de ejecutar `npm run deploy`, asegúrate de tener configuradas las variables de entorno. Ve a la sección **"Configurar Variables de Entorno"** más abajo.
+#### 🎯 **If `installDevtron: true` (Default in dev environment):**
 
-### 🔄 Opción Paso a Paso (Manual)
+**⏱️ Total time until dashboard ready: 20-50 minutes**
+- **CDK Deploy**: 5-15 minutes
+- **Devtron Installation**: 3-8 minutes (Helm)
+- **Complete initialization**: 10-20 minutes (pods, databases, services)
+- **LoadBalancer internet-facing**: 2-5 minutes (AWS recreates ALB)
 
-### 1. Configurar AWS
+**📊 Expected progress:**
+```
+0:00 - 0:15: CDK Deploy + Cluster creation
+0:15 - 0:25: Devtron Helm install
+0:25 - 0:45: Service initialization
+0:45 - 0:50: Dashboard ready to use
+```
+
+**✅ At completion you'll have:**
+- Fully operational EKS cluster
+- Devtron installed and configured
+- Dashboard URL available
+- Admin credentials generated
+
+### ⚠️ **Why don't we wait automatically?**
+
+**CDK has technical limitations that prevent including complete waiting:**
+
+#### ❌ **Timeout Issues:**
+- **Helm timeout**: CDK waits maximum 15 minutes per Helm operation
+- **Cluster stabilization**: Kubernetes can take 20+ minutes to stabilize
+- **LoadBalancer provisioning**: AWS takes 2-5 minutes to create ALB
+
+#### ❌ **CDK Architecture:**
+- **Stack dependencies**: CDK doesn't handle complex asynchronous dependencies well
+- **Rollback issues**: If initialization fails, rollback is problematic
+- **State management**: CDK assumes resources are ready immediately
+
+#### ✅ **Adopted Solution:**
+- **Fast deploy**: CDK creates basic infrastructure (5-15 min)
+- **Separate initialization**: Devtron is installed but doesn't wait for completion
+- **Manual monitoring**: User verifies progress with npm commands
+- **Flexibility**: User decides when to verify vs wait automatically
+
+**Result:** Reliable deploy vs deploy that might fail due to timeouts. 🚀
+
+### 📊 **How to Monitor Progress After Deploy**
+
+**After running `npm run deploy` with `installDevtron: true`:**
+
 ```bash
-# Configura tu perfil AWS (elige una opción):
+npm run connect-cluster
+watch -n 300 "kubectl -n devtroncd get installers installer-devtron -o jsonpath='{.status.sync.status}'"
+npm run progress
+npm run devtron-status
+```
 
-# Opción A: Access Keys (simple)
+**Devtron States:**
+- `Downloaded` → Installing (wait 10-15 min)
+- `Applied` → ✅ Ready to use
+- `OutOfSync` → ❌ Error (check logs)
+
+**⏱️ Verification checklist:**
+- [ ] CDK deploy completed (5-15 min)
+- [ ] EKS cluster operational
+- [ ] Devtron installed (status: Applied)
+- [ ] LoadBalancer accessible
+- [ ] Dashboard responds correctly
+
+#### 🎯 **If `installDevtron: false` (EKS cluster only):**
+
+**⏱️ Time: 5-15 minutes**
+- Only deploys basic EKS cluster
+- You must manually follow [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
+
+> ⚠️ **Important**: Before running `npm run deploy`, make sure you have configured the environment variables. See the **"Configure Environment Variables"** section below.
+
+### 🔄 Step-by-Step Option (Manual)
+
+### 1. Configure AWS Credentials
+```bash
 aws configure --profile AWS_PROFILE
-# Ingresa tu Access Key ID, Secret Access Key, región us-east-1
-
-# Opción B: SSO (para organizaciones)
 aws configure sso --profile AWS_PROFILE
 aws sso login --profile AWS_PROFILE
 ```
 
-### 2. Preparar el proyecto
+### 2. Prepare CDK Project
 ```bash
-# Clona e instala dependencias
 npm install
-
-# Configura CDK (solo primera vez)
 npx cdk bootstrap --profile AWS_PROFILE
-
-# Compila el proyecto
 npm run build
 ```
 
-### 3. Configurar Variables de Entorno
+### 3. Configure Environment Variables
 ```bash
-# Configura las variables de entorno del proyecto
-
-# Opción A: Variables de entorno temporales
 export ENV_NAME=dev
 export PROJECT_NAME=devtron
 export AWS_ACCOUNT=xxxx81713846
 export AWS_REGION=us-east-1
 
-# Opción B: Crear archivo .env (recomendado para desarrollo)
 cat > .env << EOF
 ENV_NAME=dev
 PROJECT_NAME=devtron
@@ -114,11 +175,9 @@ AWS_ACCOUNT=xxxx81713846
 AWS_REGION=us-east-1
 EOF
 
-# Opción C: Cargar desde archivo .env existente
 source .env
 
-# Verificar configuración
-echo "=== Variables del Proyecto ==="
+echo "=== Project Variables ==="
 echo "ENV_NAME: $ENV_NAME"
 echo "PROJECT_NAME: $PROJECT_NAME"
 echo "AWS_ACCOUNT: $AWS_ACCOUNT"
@@ -126,77 +185,60 @@ echo "AWS_REGION: $AWS_REGION"
 echo "=============================="
 ```
 
-**📋 Variables del proyecto:**
-- **`ENV_NAME`**: Entorno de despliegue (dev, staging, prod)
-- **`PROJECT_NAME`**: Nombre del proyecto (devtron)
-- **`AWS_ACCOUNT`**: ID de tu cuenta AWS (xxxx81713846)
-- **`AWS_REGION`**: Región donde se desplegará el cluster (us-east-1)
+**📋 Project variables:**
+- **`ENV_NAME`**: Deployment environment (dev, staging, prod)
+- **`PROJECT_NAME`**: Project name (devtron)
+- **`AWS_ACCOUNT`**: Your AWS account ID (xxxx81713846)
+- **`AWS_REGION`**: Region where cluster will be deployed (us-east-1)
 
-### 4. Desplegar EKS Cluster
+### 4. Deploy EKS Cluster
 ```bash
-# Desplegar cluster EKS con todos los add-ons
 npx cdk deploy --require-approval never --profile AWS_PROFILE
 ```
 
-### 5. Configurar kubectl
+### 5. Configure kubectl
 ```bash
-# Configura kubectl para acceder al cluster
 aws eks update-kubeconfig --region us-east-1 --name your-project-name-dev-cluster --profile AWS_PROFILE
-
-# Verificar conexión
 kubectl cluster-info
 kubectl get nodes
 ```
 
-### 6. Verificar instalación
+### 6. Verify installation
 ```bash
-# Ver todos los recursos del cluster
 kubectl get all --all-namespaces
-
-# Verificar add-ons
 kubectl get pods -n kube-system
-
-# Verificar node groups
 kubectl get nodes --label-columns=eks.amazonaws.com/nodegroup
 ```
 
-### 7. Próximos Pasos
+### 7. Next Steps
 ```bash
-# Después de tener el cluster listo:
-# 1. Instala kubectl y Helm siguiendo [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md)
-# 2. Instala Devtron siguiendo [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
-# 3. ¡Comienza a desplegar tus aplicaciones!
+# After having the cluster ready:
+# 1. Install kubectl and Helm by following [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md)
+# 2. Install Devtron by following [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
+# 3. Start deploying your applications!
 ```
 
-## 🔧 Solución de problemas comunes
+## 🔧 Common Troubleshooting
 
-### Problema: "No se puede conectar al cluster"
+### Problem: "Cannot connect to cluster"
 ```bash
-# Verifica tu perfil AWS
 aws sts get-caller-identity --profile AWS_PROFILE
-
-# Actualiza la configuración de kubectl
 aws eks update-kubeconfig --region us-east-1 --name your-project-name-dev-cluster --profile AWS_PROFILE
-
-# Verifica la conexión
 kubectl cluster-info
 ```
 
-### Problema: "Variables de entorno no configuradas"
+### Problem: "Environment variables not configured"
 ```bash
-# Verifica que las variables estén configuradas
 echo "ENV_NAME: $ENV_NAME"
 echo "PROJECT_NAME: $PROJECT_NAME"
 echo "AWS_ACCOUNT: $AWS_ACCOUNT"
 echo "AWS_REGION: $AWS_REGION"
 
-# Si están vacías, configúralas:
 export ENV_NAME=dev
 export PROJECT_NAME=devtron
 export AWS_ACCOUNT=xxxx81713846
 export AWS_REGION=us-east-1
 
-# O crea un archivo .env:
 cat > .env << EOF
 ENV_NAME=dev
 PROJECT_NAME=devtron
@@ -205,251 +247,268 @@ AWS_REGION=us-east-1
 EOF
 ```
 
-### Problema: "Nodes no están Ready"
+### Problem: "Nodes are not Ready"
 ```bash
-# Revisa el estado de los nodes
 kubectl get nodes
-kubectl describe node <nombre-del-node>
-
-# Verifica el node group
+kubectl describe node <node-name>
 kubectl get nodegroups
 ```
 
-### Problema: "Add-ons no se instalan"
+### Problem: "Add-ons are not installing"
 ```bash
-# Revisa el estado de los add-ons
 aws eks describe-addon --cluster-name your-cluster-name --addon-name vpc-cni
-
-# Verifica pods del sistema
 kubectl get pods -n kube-system
 ```
 
-### Problema: "Falta espacio en disco o CPU"
+### Problem: "Low disk space or CPU"
 ```bash
-# Revisa recursos del cluster
 kubectl describe nodes
 kubectl top nodes
 kubectl top pods --all-namespaces
 ```
 
-### Limpieza completa:
+### Complete cleanup:
 ```bash
-# Eliminar todo el cluster EKS (¡cuidado!)
 npx cdk destroy --profile AWS_PROFILE
 ```
 
-## 📚 Más información
+## 📚 More Information
 
-- **Documentación AWS EKS**: https://docs.aws.amazon.com/eks/
+- **AWS EKS Documentation**: https://docs.aws.amazon.com/eks/
 - **AWS CDK Documentation**: https://docs.aws.amazon.com/cdk/
-- **Configuraciones personalizadas**: Edita ``lib/construct/eks-construct.ts``
-- 📖 **[Guía de instalación de Kubernetes](INSTALL_KUBERNETES.md)**: Instalar kubectl y Helm
-- 📖 **[Guía de instalación de Devtron](INSTALL_DEVTRON.md)**: Desplegar Devtron en EKS
+- **Custom configurations**: Edit ``lib/construct/eks-construct.ts``
+- 📖 **[Kubernetes Installation Guide](INSTALL_KUBERNETES.md)**: Install kubectl and Helm
+- 📖 **[Devtron Installation Guide](INSTALL_DEVTRON.md)**: Deploy Devtron on EKS
 
-## 🎯 Consejos
+## 🎯 Tips
 
-- **Primera vez**: Usa el workflow de despliegue directo con `npm run deploy`
-- **Después del deploy**: Sigue las guías [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md) e [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
-- **Producción**: Aumenta el número de nodos y configura auto-scaling según tus necesidades
-- **Desarrollo**: El cluster está listo para desplegar tus aplicaciones inmediatamente
-- **Comandos rápidos**:
-  - **Desplegar**: `npm run deploy` (despliega cluster EKS)
-  - **Conectar**: `npm run connect-cluster` (configura kubectl automáticamente)
-  - **Ayuda conectar**: `npm run connect` (muestra instrucciones de conexión)
-  - **Verificar**: `npm run status` (muestra estado del cluster)
-  - **Pods**: `npm run pods` (lista todos los pods)
-  - **Servicios**: `npm run services` (lista todos los servicios)
-  - **Nodos**: `npm run nodes` (información de node groups)
-  - **Eventos**: `npm run events` (eventos recientes del cluster)
-  - **Logs**: `npm run logs` (ver logs de pods)
-  - **Destruir**: `npm run destroy` (elimina todo el cluster)
-- **Configuración**: Edita `lib/stack/eks/index.ts` para personalizar el cluster
-- **Variables de entorno**: Configura `ENV_NAME`, `PROJECT_NAME`, `AWS_ACCOUNT`, `AWS_REGION` antes del deploy
-- **Outputs optimizados**: Eliminados duplicados, agregados comandos útiles
+- **First time**: Use the direct deployment workflow with `npm run deploy`
+- **With installDevtron=true**: Wait 20-50 minutes until dashboard is ready
+- **With installDevtron=false**: Follow [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md) after deploy
+- **Monitoring**: Use `npm run progress` to see real-time status
+- **Production**: Increase nodes and configure auto-scaling according to needs
+- **Development**: Cluster ready for applications immediately
+- **Wait times**:
+  - **Cluster only**: 5-15 minutes
+  - **With Devtron**: 20-50 minutes total
+  - **LoadBalancer fix**: 3-7 additional minutes if needed
 
-## 🛠️ Scripts Disponibles
+### ⚡ Quick Commands by Scenario
 
-| Comando | Descripción |
-|---------|-------------|
-| `npm run deploy` | Desplegar cluster EKS |
-| `npm run destroy` | Eliminar cluster EKS |
-| `npm run connect` | Mostrar instrucciones detalladas de conexión |
-| `npm run connect-cluster` | Conectar automáticamente al cluster |
-| `npm run status` | Verificar estado del cluster |
-| `npm run pods` | Listar todos los pods |
-| `npm run services` | Listar todos los servicios |
-| `npm run nodes` | Información de node groups |
-| `npm run events` | Eventos recientes del cluster |
-| `npm run logs` | Ver logs de pods (requiere argumentos) |
-| `npm run fix-lb-public` | Corregir LoadBalancer para acceso público |
-| `npm run verify-lb` | Verificar estado del LoadBalancer |
+#### **After Deploy with Devtron:**
+```bash
+npm run connect-cluster    # Connect kubectl
+npm run progress          # View complete progress
+watch -n 300 "kubectl -n devtroncd get installers installer-devtron -o jsonpath='{.status.sync.status}'"  # Automatic monitoring
+npm run devtron-status    # Final URL and password
+```
 
-### Comandos Interactivos:
-| Comando | Uso |
-|---------|-----|
-| `npm run logs <pod-name>` | Ver logs de un pod específico |
-| `kubectl describe <resource>` | Describir recursos (usa kubectl directamente) |
-| `kubectl exec -it <pod>` | Ejecutar comandos en un pod |
-| `kubectl port-forward <svc>` | Port forwarding de servicios |
-| `kubectl apply -f <file>` | Aplicar manifests YAML |
-| `kubectl delete <resource>` | Eliminar recursos |
+#### **After Deploy without Devtron:**
+```bash
+npm run connect-cluster    # Connect kubectl
+npm run status            # View cluster status
+# Then follow INSTALL_DEVTRON.md
+```
 
-### 🔗 Conexión al Cluster
+#### **Monitoring Commands:**
+- **Deploy**: `npm run deploy` (deploys EKS cluster)
+- **Connect**: `npm run connect-cluster` (automatically configures kubectl)
+- **Connect help**: `npm run connect` (shows connection instructions)
+- **Verify**: `npm run status` (shows cluster status)
+- **Pods**: `npm run pods` (lists all pods)
+- **Services**: `npm run services` (lists all services)
+- **Nodes**: `npm run nodes` (node group information)
+- **Events**: `npm run events` (recent cluster events)
+- **Logs**: `npm run logs` (view pod logs)
+- **Destroy**: `npm run destroy` (removes entire cluster)
 
-**Después de desplegar el cluster EKS:**
+### ⚙️ Advanced Configuration
+- **Customize cluster**: Edit `lib/stack/eks/index.ts`
+- **Environment variables**: Configure `ENV_NAME`, `PROJECT_NAME`, `AWS_ACCOUNT`, `AWS_REGION`
+- **Wait times**: CDK maximum timeout 15 min, service initialization 20+ min
+- **Optimized outputs**: Removed duplicates, added useful commands
 
-1. **Ver instrucciones de conexión:**
+## 🛠️ Available Scripts
+
+| Command | Description | Estimated Time |
+|---------|-------------|----------------|
+| `npm run deploy` | Deploy complete EKS cluster | 5-50 min (depends on installDevtron) |
+| `npm run destroy` | Remove EKS cluster | 5-10 min |
+| `npm run connect` | Show detailed connection instructions | Instantaneous |
+| `npm run connect-cluster` | Automatically connect to cluster | 1-2 min |
+| `npm run status` | Check cluster status | Instantaneous |
+| `npm run progress` | Complete status with wait times | Instantaneous |
+| `npm run time-estimates` | Show installation time estimates | Instantaneous |
+| `npm run cost-analysis` | Cost analysis and instances | Instantaneous |
+| `npm run devtron-status` | Devtron URL and password | Instantaneous |
+| `npm run pods` | List all pods | Instantaneous |
+| `npm run services` | List all services | Instantaneous |
+| `npm run nodes` | Node group information | Instantaneous |
+| `npm run events` | Recent cluster events | Instantaneous |
+| `npm run logs <pod>` | View logs of specific pod | Instantaneous |
+| `npm run fix-lb-public` | Fix LoadBalancer for public access | 3-7 min |
+| `npm run verify-lb` | Verify LoadBalancer status | Instantaneous |
+
+### Interactive Commands:
+| Command | Usage |
+|---------|-------|
+| `npm run logs <pod-name>` | View logs of specific pod |
+| `kubectl describe <resource>` | Describe resources (use kubectl directly) |
+| `kubectl exec -it <pod>` | Execute commands in a pod |
+| `kubectl port-forward <svc>` | Port forwarding of services |
+| `kubectl apply -f <file>` | Apply YAML manifests |
+| `kubectl delete <resource>` | Delete resources |
+
+### 🔗 Cluster Connection
+
+**After deploying the EKS cluster:**
+
+1. **View connection instructions:**
    ```bash
    npm run connect
    ```
 
-2. **Conectar automáticamente:**
+2. **Connect automatically:**
    ```bash
    npm run connect-cluster
    ```
 
-3. **Verificar conexión:**
+3. **Verify connection:**
    ```bash
    npm run status
    ```
 
-**Si el cluster tiene un nombre diferente, conecta manualmente:**
+**If the cluster has a different name, connect manually:**
 ```bash
 aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile AWS_PROFILE
 ```
 
-## 🔄 Versiones de Kubernetes
+## 🔄 Kubernetes Versions
 
-### 📊 Clúster Actual: `devtron-dev-cluster`
-- **Versión**: 1.32
-- **Proveedor**: Amazon EKS
+### 📊 Current Cluster: `devtron-dev-cluster`
+- **Version**: 1.32
+- **Provider**: Amazon EKS
 
-### 📅 Información de Soporte para Kubernetes 1.32
+### 📅 Support Information for Kubernetes 1.32
 
-**Soporte Estándar:**
-- ✅ **Disponible**: Sí (usada actualmente en el proyecto)
-- ✅ **Liberada en CDK**: Disponible
-- ✅ **Fin soporte estándar**: Marzo 2026
+**Standard Support:**
+- ✅ **Available**: Yes (currently used in the project)
+- ✅ **Released in CDK**: Available
+- ✅ **End of standard support**: March 2026
 
-**Soporte Extendido:**
-- ⚠️ **Disponible después de marzo 2026**
-- 💰 **Costos adicionales** aplican durante soporte extendido
-- 📈 **Recomendación**: Planificar actualización antes de marzo 2026 para evitar soporte extendido
+**Extended Support:**
+- ⚠️ **Available after March 2026**
+- 💰 **Additional costs** apply during extended support
+- 📈 **Recommendation**: Plan upgrade before March 2026 to avoid extended support
 
-### 🎯 Opciones para Evitar Soporte Extendido
+### 🎯 Options to Avoid Extended Support
 
-Si no deseas usar soporte extendido, puedes:
+If you don't want to use extended support, you can:
 
-1. **Actualizar el clúster** a la versión 1.33 cuando esté disponible
-2. **Gestionar la política de versiones** de Kubernetes
-3. **Planificar la migración** con antelación
+1. **Upgrade the cluster** to version 1.33 when available
+2. **Manage the Kubernetes version policy**
+3. **Plan the migration** in advance
 
-> 💡 **Nota importante**: El soporte extendido tiene costos adicionales. Para más información, consulta la [página de precios de AWS EKS](https://aws.amazon.com/eks/pricing/) y la [documentación de políticas de versiones](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html).
+> 💡 **Important note**: Extended support has additional costs. For more information, check the [AWS EKS pricing page](https://aws.amazon.com/eks/pricing/) and the [version policies documentation](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html).
 
-### 📋 Calendario de Versiones AWS EKS
+### 📋 AWS EKS Version Calendar
 
-| Versión | Estado | Soporte Estándar | Soporte Extendido |
+| Version | Status | Standard Support | Extended Support |
 |---------|--------|------------------|-------------------|
-| **1.32** | Actual | Enero 2025 - Marzo 2026 | Marzo 2026 - Marzo 2027 |
-| **1.31** | Estándar | Septiembre 2024 - Noviembre 2025 | Noviembre 2025 - Noviembre 2026 |
-| **1.30** | Extendido | Mayo 2024 - Julio 2025 | Julio 2025 - Julio 2026 |
-| **1.29** | Extendido | Enero 2024 - Marzo 2025 | Marzo 2025 - Marzo 2026 |
+| **1.32** | Current | January 2025 - March 2026 | March 2026 - March 2027 |
+| **1.31** | Standard | September 2024 - November 2025 | November 2025 - November 2026 |
+| **1.30** | Extended | May 2024 - July 2025 | July 2025 - July 2026 |
+| **1.29** | Extended | January 2024 - March 2025 | March 2025 - March 2026 |
 
-### Para cambiar la versión:
+### To change the version:
 ```typescript
-// En `lib/stack/eks/index.ts`
-kubernetesVersion: eksv2.KubernetesVersion.V1_32, // Actual (usada por defecto)
-// o
-kubernetesVersion: eksv2.KubernetesVersion.V1_31, // Soporte estándar
-// o
-kubernetesVersion: eksv2.KubernetesVersion.V1_30, // Soporte extendido
-// o cuando esté disponible:
+// In `lib/stack/eks/index.ts`
+kubernetesVersion: eksv2.KubernetesVersion.V1_32, // Current (used by default)
+// or
+kubernetesVersion: eksv2.KubernetesVersion.V1_31, // Standard support
+// or
+kubernetesVersion: eksv2.KubernetesVersion.V1_30, // Extended support
+// or when available:
 // kubernetesVersion: eksv2.KubernetesVersion.V1_33,
 ```
 
-> 📋 **Nota**: El proyecto usa la versión más reciente disponible en AWS CDK. Según la [documentación oficial de AWS EKS](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html), la versión 1.33 estará disponible próximamente en `@aws-cdk/aws-eks-v2`.
+> 📋 **Note**: The project uses the latest available version in AWS CDK. According to the [official AWS EKS documentation](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html), version 1.33 will be available soon in `@aws-cdk/aws-eks-v2`.
 
-## 💡 ¿Qué incluye la instalación?
+## 💡 What does the installation include?
 
-| Componente | Estado | Descripción |
-|------------|--------|-------------|
-| **EKS Cluster** | ✅ Automático | Cluster `devtron-dev-cluster` Kubernetes 1.32 con control plane |
-| **VPC** | ✅ Automático | VPC dedicada con subnets públicas/privadas |
-| **Node Group** | ✅ Automático | Grupo de nodos con auto-scaling (2-10 nodos) |
-| **VPC CNI** | ✅ Automático | Networking para pods |
-| **CoreDNS** | ✅ Automático | Servicio de DNS del cluster |
-| **Kube Proxy** | ✅ Automático | Proxy de red para servicios |
-| **EBS CSI Driver** | ✅ Automático | Storage persistente con EBS |
+| Component | Status | Description |
+|-----------|--------|-------------|
+| **EKS Cluster** | ✅ Automatic | `devtron-dev-cluster` Kubernetes 1.32 cluster with control plane |
+| **VPC** | ✅ Automatic | Dedicated VPC with public/private subnets |
+| **Node Group** | ✅ Automatic | Node group with auto-scaling (2-10 nodes) |
+| **VPC CNI** | ✅ Automatic | Networking for pods |
+| **CoreDNS** | ✅ Automatic | Cluster DNS service |
+| **Kube Proxy** | ✅ Automatic | Network proxy for services |
+| **EBS CSI Driver** | ✅ Automatic | Persistent storage with EBS |
 
-¡Tu cluster EKS estará listo en menos de 15 minutos! 🎉
+Your EKS cluster will be ready in less than 15 minutes! 🎉
 
-## 📋 Próximos Pasos Después del Deploy
+## 📋 Next Steps After Deploy
 
-Una vez que tengas tu cluster EKS desplegado y funcionando, sigue estos pasos para completar la instalación:
+Once you have your EKS cluster deployed and running, follow these steps to complete the installation:
 
-### 1. 🛠️ Preparar tu Entorno Local
+### 1. 🛠️ Prepare Your Local Environment
 
-**Instala los clientes necesarios en tu máquina:**
-- 📖 **[Sigue la guía completa](INSTALL_KUBERNETES.md)** para instalar kubectl y Helm
-- ⏱️ **Tiempo estimado:** 10-15 minutos
-- ✅ **Verificación:** `kubectl version --client` y `helm version`
+**Install the necessary clients on your machine:**
+- 📖 **[Follow the complete guide](INSTALL_KUBERNETES.md)** to install kubectl and Helm
+- ⏱️ **Estimated time:** 10-15 minutes
+- ✅ **Verification:** `kubectl version --client` and `helm version`
 
-### 2. 🚀 Instalar Devtron
+### 2. 🚀 Install Devtron
 
-**Despliega Devtron con CI/CD en tu cluster:**
-- 📖 **[Sigue la guía detallada](INSTALL_DEVTRON.md)** para instalar Devtron
-- 🎯 **Incluye:** Conexión al cluster, instalación con Helm, configuración inicial
-- ✅ **Resultado:** Dashboard de Devtron accesible
+**Deploy Devtron with CI/CD on your cluster:**
+- 📖 **[Follow the detailed guide](INSTALL_DEVTRON.md)** to install Devtron
+- 🎯 **Includes:** Cluster connection, Helm installation, initial configuration
+- ✅ **Result:** Devtron dashboard accessible
 
-### 3. 🔗 Conectar y Verificar
+### 3. 🔗 Connect and Verify
 
-**Conecta a tu cluster y verifica todo esté funcionando:**
+**Connect to your cluster and verify everything is working:**
 ```bash
-# Conectar automáticamente al cluster
 npm run connect-cluster
-
-# Verificar el estado del cluster
 npm run status
 
-# Ver todos los pods (después de instalar Devtron)
 npm run pods
 ```
 
-### 4. 🎯 Comenzar a Usar Devtron
+### 4. 🎯 Start Using Devtron
 
-Una vez instalado Devtron, podrás:
-- ✅ **Configurar pipelines CI/CD**
-- ✅ **Desplegar aplicaciones**
-- ✅ **Gestionar entornos**
-- ✅ **Monitorear tu cluster**
+Once Devtron is installed, you can:
+- ✅ **Configure CI/CD pipelines**
+- ✅ **Deploy applications**
+- ✅ **Manage environments**
+- ✅ **Monitor your cluster**
 
-## 📚 Documentación de Instalación
+## 📚 Installation Documentation
 
-| Guía | Propósito | Tiempo Estimado |
-|------|-----------|----------------|
-| **[INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md)** | Instalar kubectl y Helm | 10-15 min |
-| **[INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)** | Instalar Devtron en EKS | 15-20 min |
+| Guide | Purpose | Estimated Time |
+|-------|---------|----------------|
+| **[INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md)** | Install kubectl and Helm | 10-15 min |
+| **[INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)** | Install Devtron on EKS | 15-20 min |
 
-¡Sigue estas guías en orden para tener un entorno completo de desarrollo con Kubernetes y Devtron! 🚀
+Follow these guides in order to have a complete development environment with Kubernetes and Devtron! 🚀
 
-## 🔧 Variables de Entorno del Proyecto
+## 🔧 Project Environment Variables
 
-### 📋 Variables Esenciales para CDK Deploy
+### 📋 Essential Variables for CDK Deploy
 
-**Antes de ejecutar `npm run deploy`, configura estas variables:**
+**Before running `npm run deploy`, configure these variables:**
 
 ```bash
-# Variables del proyecto (obligatorias)
 export ENV_NAME=dev
 export PROJECT_NAME=devtron
 export AWS_ACCOUNT=xxxx81713846
 export AWS_REGION=us-east-1
 ```
 
-### 🗂️ Crear Archivo .env (Recomendado)
+### 🗂️ Create .env File (Recommended)
 
 ```bash
-# Crear archivo .env en la raíz del proyecto
 cat > .env << EOF
 ENV_NAME=dev
 PROJECT_NAME=devtron
@@ -457,55 +516,43 @@ AWS_ACCOUNT=xxxx81713846
 AWS_REGION=us-east-1
 EOF
 
-# Cargar variables desde el archivo
 source .env
 ```
 
-### ✅ Verificar Configuración
+### ✅ Verify Configuration
 
 ```bash
-# Verificar que todas las variables estén configuradas
-echo "=== Variables del Proyecto ==="
+echo "=== Project Variables ==="
 echo "ENV_NAME: $ENV_NAME"
 echo "PROJECT_NAME: $PROJECT_NAME"
 echo "AWS_ACCOUNT: $AWS_ACCOUNT"
 echo "AWS_REGION: $AWS_REGION"
 echo "============================="
 
-# Verificar que las variables no estén vacías
 if [ -z "$ENV_NAME" ] || [ -z "$PROJECT_NAME" ] || [ -z "$AWS_ACCOUNT" ] || [ -z "$AWS_REGION" ]; then
-    echo "❌ Error: Algunas variables están vacías"
+    echo "❌ Error: Some variables are empty"
     exit 1
 else
-    echo "✅ Todas las variables están configuradas correctamente"
+    echo "✅ All variables are configured correctly"
 fi
 ```
 
-### 🚨 Problemas Comunes
+### 🚨 Common Issues
 
-**Si obtienes errores de variables no definidas:**
+**If you get undefined variable errors:**
 ```bash
-# Error: ENV_NAME is not set
 export ENV_NAME=dev
-
-# Error: PROJECT_NAME is not set
 export PROJECT_NAME=devtron
-
-# Error: AWS_ACCOUNT is not set
 export AWS_ACCOUNT=xxxx81713846
-
-# Error: AWS_REGION is not set
 export AWS_REGION=us-east-1
 ```
 
-**Para desarrollo local persistente:**
+**For persistent local development:**
 ```bash
-# Agregar a tu ~/.bashrc o ~/.zshrc
 echo 'export ENV_NAME=dev' >> ~/.bashrc
 echo 'export PROJECT_NAME=devtron' >> ~/.bashrc
 echo 'export AWS_ACCOUNT=xxxx81713846' >> ~/.bashrc
 echo 'export AWS_REGION=us-east-1' >> ~/.bashrc
 
-# Recargar configuración
 source ~/.bashrc
 ```

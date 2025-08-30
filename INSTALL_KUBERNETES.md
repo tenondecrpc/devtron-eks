@@ -1,75 +1,68 @@
-# Guía de Instalación de Kubernetes y Helm
+# Kubernetes and Helm Installation Guide
 
-Esta guía proporciona instrucciones detalladas para instalar Kubernetes (kubectl) y Helm en diferentes sistemas operativos.
+This guide provides detailed instructions for installing Kubernetes (kubectl) and Helm on different operating systems.
 
-## Prerrequisitos
+## Prerequisites
 
-- Conexión a internet estable
-- Permisos de administrador/sudo
-- Espacio en disco suficiente (~2GB)
+- Stable internet connection
+- Administrator/sudo permissions
+- Sufficient disk space (~2GB)
 
-## Instalación en macOS
+## Installation on macOS
 
-### Opción 1: Usando Homebrew (Recomendado)
+### Option 1: Using Homebrew (Recommended)
 
 ```bash
-# Instalar Homebrew si no lo tienes
+# Install Homebrew if you don't have it
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-# Instalar kubectl
 brew install kubectl
-
-# Instalar Helm
 brew install helm
 
-# Verificar instalaciones
 kubectl version --client
 helm version
 ```
 
-### Opción 2: Instalación Manual
+### Option 2: Manual Installation
 
 ```bash
-# Instalar kubectl
+# Install kubectl
 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/darwin/amd64/kubectl"
 chmod +x kubectl
 sudo mv kubectl /usr/local/bin/
 
-# Instalar Helm
-curl https://get.helm.sh/helm-v3.12.0-darwin-amd64.tar.gz -o helm.tar.gz
+# Install Helm (latest version)
+curl https://get.helm.sh/helm-v3.15.4-darwin-amd64.tar.gz -o helm.tar.gz
 tar -zxvf helm.tar.gz
 sudo mv darwin-amd64/helm /usr/local/bin/helm
 rm -rf darwin-amd64 helm.tar.gz
 
-# Verificar instalaciones
+# Verify installations
 kubectl version --client
 helm version
 ```
 
-## Instalación en Linux
+## Installation on Linux
 
 ### Ubuntu/Debian
 
 ```bash
-# Actualizar el sistema
+# Update the system
 sudo apt update && sudo apt upgrade -y
 
-# Instalar curl si no está instalado
+# Install curl if not installed
 sudo apt install -y curl
 
-# Instalar kubectl
 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 chmod +x kubectl
 sudo mv kubectl /usr/local/bin/
 
-# Instalar Helm
 curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
 sudo apt-get install apt-transport-https --yes
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
 sudo apt-get update
 sudo apt-get install helm
 
-# Verificar instalaciones
 kubectl version --client
 helm version
 ```
@@ -77,77 +70,67 @@ helm version
 ### CentOS/RHEL/Fedora
 
 ```bash
-# Instalar kubectl
 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 chmod +x kubectl
 sudo mv kubectl /usr/local/bin/
 
-# Instalar Helm
-curl https://get.helm.sh/helm-v3.12.0-linux-amd64.tar.gz -o helm.tar.gz
+curl https://get.helm.sh/helm-v3.15.4-linux-amd64.tar.gz -o helm.tar.gz
 tar -zxvf helm.tar.gz
 sudo mv linux-amd64/helm /usr/local/bin/helm
 rm -rf linux-amd64 helm.tar.gz
 
-# Verificar instalaciones
 kubectl version --client
 helm version
 ```
 
-## Instalación en Windows
+## Installation on Windows
 
-### Opción 1: Usando Chocolatey (Recomendado)
+### Option 1: Using Chocolatey (Recommended)
 
 ```powershell
-# Instalar Chocolatey si no lo tienes
+# Install Chocolatey if you don't have it
 Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 
-# Instalar kubectl
 choco install kubernetes-cli
-
-# Instalar Helm
 choco install kubernetes-helm
 
-# Verificar instalaciones
 kubectl version --client
 helm version
 ```
 
-### Opción 2: Usando winget
+### Option 2: Using winget
 
 ```powershell
-# Instalar kubectl
 winget install -e --id Kubernetes.kubectl
 
-# Instalar Helm (descargar manualmente)
-curl https://get.helm.sh/helm-v3.12.0-windows-amd64.zip -o helm.zip
+curl https://get.helm.sh/helm-v3.15.4-windows-amd64.zip -o helm.zip
 Expand-Archive helm.zip .
 Move-Item windows-amd64\helm.exe C:\Windows\System32\
 Remove-Item -Recurse windows-amd64, helm.zip
 
-# Verificar instalaciones
 kubectl version --client
 helm version
 ```
 
-### Opción 3: Instalación Manual
+### Option 3: Manual Installation
 
-1. **Descargar kubectl:**
-   - Ve a: https://dl.k8s.io/release/v1.27.0/bin/windows/amd64/kubectl.exe
-   - Mueve el archivo a `C:\Windows\System32\`
+1. **Download kubectl:**
+   - Go to: https://dl.k8s.io/release/v1.32.0/bin/windows/amd64/kubectl.exe
+   - Move the file to `C:\Windows\System32\`
 
-2. **Descargar Helm:**
-   - Ve a: https://get.helm.sh/helm-v3.12.0-windows-amd64.zip
-   - Extrae y mueve `helm.exe` a `C:\Windows\System32\`
+2. **Download Helm:**
+   - Go to: https://get.helm.sh/helm-v3.15.4-windows-amd64.zip
+   - Extract and move `helm.exe` to `C:\Windows\System32\`
 
-3. **Verificar instalaciones:**
+3. **Verify installations:**
    ```cmd
    kubectl version --client
    helm version
    ```
 
-## Configuración Post-Instalación
+## Post-Installation Configuration
 
-### Configurar Autocompletado (Opcional)
+### Configure Autocomplete (Optional)
 
 #### Bash (Linux/macOS)
 ```bash
@@ -182,49 +165,47 @@ helm completion powershell >> $PROFILE
 .$PROFILE
 ```
 
-## Verificación Final
+## Final Verification
 
-Ejecuta estos comandos para verificar que todo esté funcionando correctamente:
+Run these commands to verify everything is working correctly:
 
 ```bash
-# Verificar versiones
 kubectl version --client --output=yaml
 helm version --short
 
-# Verificar configuración de kubectl
 kubectl config current-context
-
-# Verificar repositorios de Helm
 helm repo list
 ```
 
-## Solución de Problemas
+## Troubleshooting
 
-### Error de permisos
-Si obtienes errores de permisos, ejecuta los comandos con `sudo` (Linux/macOS) o como Administrador (Windows).
+### Permission Error
+If you get permission errors, run commands with `sudo` (Linux/macOS) or as Administrator (Windows).
 
-### kubectl no encontrado
-Asegúrate de que el directorio donde instalaste kubectl esté en tu PATH:
+### kubectl not found
+Make sure the directory where you installed kubectl is in your PATH:
 - Linux/macOS: `/usr/local/bin`
 - Windows: `C:\Windows\System32`
 
-### Problemas de red
-Si tienes problemas de conectividad:
-- Verifica tu conexión a internet
-- Algunos firewalls corporativos pueden bloquear las descargas
-- Considera usar un proxy si es necesario
+### Network Issues
+If you have connectivity problems:
+- Check your internet connection
+- Some corporate firewalls may block downloads
+- Consider using a proxy if necessary
 
-## Próximos Pasos
+## Next Steps
 
-Una vez instalado Kubernetes y Helm, puedes:
-1. Configurar un cluster local (Minikube, Kind, etc.)
-2. Conectarte a un cluster remoto (EKS, AKS, GKE, etc.)
-3. Instalar aplicaciones usando Helm charts
-4. Comenzar a trabajar con Kubernetes
+Once Kubernetes and Helm are installed, you can:
+1. Configure a local cluster (Minikube, Kind, etc.)
+2. Connect to a remote cluster (EKS, AKS, GKE, etc.)
+3. Install applications using Helm charts
+4. Start working with Kubernetes
 
-## Recursos Adicionales
+## Additional Resources
 
-- [Documentación oficial de Kubernetes](https://kubernetes.io/docs/)
-- [Documentación oficial de Helm](https://helm.sh/docs/)
-- [Guía de kubectl](https://kubectl.docs.kubernetes.io/)
-- [Helm Hub - Repositorio de charts](https://hub.helm.sh/)
+- 🏠 **[README.md](README.md)** - Project start and EKS deployment
+- 📖 **[INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)** - Install Devtron on your EKS cluster
+- [Official Kubernetes Documentation](https://kubernetes.io/docs/)
+- [Official Helm Documentation](https://helm.sh/docs/)
+- [kubectl Guide](https://kubectl.docs.kubernetes.io/)
+- [Helm Hub - Chart Repository](https://hub.helm.sh/)

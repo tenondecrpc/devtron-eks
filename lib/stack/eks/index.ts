@@ -8,6 +8,7 @@ import { ParamsConfig } from "../shared/util/env-config";
 export interface EksFactoryProps {
     params: ParamsConfig;
     vpc?: ec2.IVpc;
+    installDevtron?: boolean;
 }
 
 /**
@@ -20,7 +21,7 @@ export class EksFactory extends Construct {
     constructor(scope: Construct, id: string, props: EksFactoryProps) {
         super(scope, id);
 
-        const { params, vpc } = props;
+        const { params, vpc, installDevtron } = props;
         const { envName, projectName } = params;
         const isProd = envName === "prod";
 
@@ -30,10 +31,11 @@ export class EksFactory extends Construct {
             vpc: vpc,
             kubernetesVersion: eksv2.KubernetesVersion.V1_32,
             nodeGroupInstanceTypes: [
-                new ec2.InstanceType('t3.large'),
+                // Cost optimization: t3.medium for dev, t3.large for prod
+                isProd ? new ec2.InstanceType('t3.large') : new ec2.InstanceType('t3.medium'),
             ],
             minSize: 3,
-            maxSize: 15,
+            maxSize: isProd ? 15 : 8,
             desiredSize: isProd ? 6 : 3,
             tags: {
                 Environment: envName,
@@ -46,82 +48,78 @@ export class EksFactory extends Construct {
         // Install essential EKS add-ons
         this.cluster.installEksAddons();
 
+        // Install Devtron if requested
+        if (installDevtron) {
+            this.installDevtron();
+        }
+
         // Create outputs for easy access
         this.createOutputs();
     }
 
     /**
-     * Create CloudFormation outputs for easy access
+     * Create essential CloudFormation outputs (non-redundant with npm scripts)
      */
     private createOutputs(): void {
         const clusterName = this.cluster.cluster.clusterName;
         const region = this.node.tryGetContext('aws:region') || 'us-east-1';
 
-        // Essential cluster information
+        // Essential cluster information (no redundant with npm scripts)
         new CfnOutput(this, 'EksClusterName', {
             value: clusterName,
-            description: 'EKS Cluster name',
+            description: 'EKS Cluster name for reference',
         });
 
         new CfnOutput(this, 'EksClusterEndpoint', {
             value: this.cluster.cluster.clusterEndpoint,
-            description: 'EKS Cluster API endpoint',
+            description: 'EKS Cluster API endpoint (use with npm run connect-cluster)',
         });
 
-        new CfnOutput(this, 'EksClusterArn', {
-            value: this.cluster.cluster.clusterArn,
-            description: 'EKS Cluster ARN',
+        // Configuration info (useful for automation/terraform)
+        new CfnOutput(this, 'EksRegion', {
+            value: region,
+            description: 'AWS Region where cluster is deployed',
         });
 
-        // Useful commands
-        new CfnOutput(this, 'EksKubectlConfig', {
-            value: `aws eks update-kubeconfig --region ${region} --name ${clusterName} --profile AWS_PROFILE`,
-            description: 'Command to configure kubectl for this cluster',
+        new CfnOutput(this, 'EksVpcId', {
+            value: this.cluster.cluster.vpc.vpcId,
+            description: 'VPC ID for network configuration',
         });
 
-        new CfnOutput(this, 'EksConnectCommand', {
-            value: `npm run connect-cluster`,
-            description: 'Quick connect command using npm script',
+        // Quick reference for cluster operations
+        new CfnOutput(this, 'EksQuickStart', {
+            value: `npm run connect-cluster && npm run status && npm run cost-analysis`,
+            description: 'Quick commands to verify cluster after deployment',
+        });
+    }
+
+    /**
+     * Install Devtron with internet-facing LoadBalancer
+     */
+    private installDevtron(): void {
+        // Install Devtron via Helm
+        const devtronChart = this.cluster.installDevtron();
+
+        // Create service with internet-facing configuration
+        const devtronService = this.cluster.createDevtronService();
+
+        // Add dependency to ensure service is created after Devtron is installed
+        devtronService.node.addDependency(devtronChart);
+
+        // Add outputs for Devtron
+        new CfnOutput(this, 'DevtronUrl', {
+            value: `kubectl get svc devtron-service -n devtroncd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'`,
+            description: 'Devtron dashboard URL (wait for LoadBalancer to be ready)',
         });
 
-        new CfnOutput(this, 'EksClusterStatus', {
-            value: `kubectl cluster-info && kubectl get nodes`,
-            description: 'Commands to verify cluster status',
+        new CfnOutput(this, 'DevtronAdminPassword', {
+            value: `kubectl get secret devtron-secret -n devtroncd -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d`,
+            description: 'Devtron admin password',
         });
 
-        new CfnOutput(this, 'EksPodsStatus', {
-            value: `kubectl get pods -A --field-selector=status.phase!=Running`,
-            description: 'Check for non-running pods across all namespaces',
-        });
-
-        new CfnOutput(this, 'EksServicesStatus', {
-            value: `kubectl get svc -A`,
-            description: 'List all services in the cluster',
-        });
-
-        new CfnOutput(this, 'EksNodeGroups', {
-            value: `kubectl get nodes --label-columns=eks.amazonaws.com/nodegroup`,
-            description: 'View EKS node group information',
-        });
-
-        new CfnOutput(this, 'EksStorageClasses', {
-            value: `kubectl get storageclass`,
-            description: 'List available storage classes',
-        });
-
-        new CfnOutput(this, 'EksClusterEvents', {
-            value: `kubectl get events --sort-by=.metadata.creationTimestamp`,
-            description: 'View recent cluster events',
-        });
-
-        new CfnOutput(this, 'EksResourceUsage', {
-            value: `kubectl top nodes && echo "---" && kubectl top pods -A`,
-            description: 'Check resource usage for nodes and pods',
-        });
-
-        new CfnOutput(this, 'EksQuickConnect', {
-            value: `npm run connect-cluster`,
-            description: 'Quick command to connect to the cluster',
+        new CfnOutput(this, 'DevtronInstallStatus', {
+            value: `kubectl get installers installer-devtron -n devtroncd -o jsonpath='{.status.sync.status}'`,
+            description: 'Devtron installation status',
         });
     }
 
