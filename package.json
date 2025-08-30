@@ -18,16 +18,8 @@
     "nodes": "kubectl get nodes --label-columns=eks.amazonaws.com/nodegroup",
     "events": "kubectl get events --sort-by=.metadata.creationTimestamp",
     "logs": "kubectl logs",
-    "top": "kubectl top nodes && echo '---' && kubectl top pods -A",
-    "storage": "kubectl get storageclass && kubectl get pvc -A",
-    "health": "kubectl get nodes && kubectl get pods -A --field-selector=status.phase!=Running",
-    "scale": "kubectl scale deployment",
-    "describe": "kubectl describe",
-    "port-forward": "kubectl port-forward",
-    "exec": "kubectl exec -it",
-    "apply": "kubectl apply -f",
-    "delete": "kubectl delete",
-    "watch": "kubectl get pods -A -w"
+    "fix-lb-public": "kubectl patch svc devtron-service -n devtroncd --type merge -p '{\"metadata\":{\"annotations\":{\"service.beta.kubernetes.io/aws-load-balancer-type\":\"nlb\",\"service.beta.kubernetes.io/aws-load-balancer-scheme\":\"internet-facing\",\"service.beta.kubernetes.io/aws-load-balancer-nlb-target-type\":\"ip\"}}}'",
+    "verify-lb": "kubectl get svc devtron-service -n devtroncd -o wide"
   },
   "devDependencies": {
     "@types/dotenv": "^6.1.1",

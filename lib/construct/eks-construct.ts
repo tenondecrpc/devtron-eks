@@ -26,20 +26,76 @@ export class EksConstruct extends Construct {
     constructor(scope: Construct, id: string, props: EksConstructProps) {
         super(scope, id);
 
-        // Use existing VPC or create new one
+        // Use existing VPC or create new one with proper public access configuration
+        //
+        // ARCHITECTURE DECISIONS:
+        // 1. PUBLIC subnets: For LoadBalancers, NAT Gateways, and internet-facing services
+        // 2. PRIVATE_WITH_EGRESS subnets: For application pods that need outbound internet access
+        // 3. NAT Gateway (1): Provides outbound internet access for private subnet resources
+        //    - Allows pods to download container images, install packages, etc.
+        //    - Does NOT make LoadBalancers public (that's handled by public subnets)
+        //
         this.vpc = props.vpc || new ec2.Vpc(this, 'EksVpc', {
             maxAzs: 2,
-            natGateways: 1,
+            natGateways: 1, // Single NAT Gateway for cost optimization
+            subnetConfiguration: [
+                {
+                    cidrMask: 24,
+                    name: 'Public',
+                    subnetType: ec2.SubnetType.PUBLIC,
+                },
+                {
+                    cidrMask: 24,
+                    name: 'Private',
+                    subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+                }
+            ],
         });
+
+        // Create Security Group for Load Balancer with public access
+        const albSecurityGroup = new ec2.SecurityGroup(this, 'AlbSecurityGroup', {
+            vpc: this.vpc,
+            description: 'Security group for Application Load Balancer',
+            allowAllOutbound: true,
+        });
+
+        // Allow HTTP and HTTPS traffic from anywhere
+        albSecurityGroup.addIngressRule(
+            ec2.Peer.anyIpv4(),
+            ec2.Port.tcp(80),
+            'Allow HTTP traffic from anywhere'
+        );
+
+        albSecurityGroup.addIngressRule(
+            ec2.Peer.anyIpv4(),
+            ec2.Port.tcp(443),
+            'Allow HTTPS traffic from anywhere'
+        );
 
         // Create EKS Cluster - kubectl provider should be automatically configured
         this.cluster = new eksv2.Cluster(this, 'EksCluster', {
             clusterName: props.clusterName,
             version: props.kubernetesVersion || eksv2.KubernetesVersion.V1_32,
             vpc: this.vpc,
+            // Ensure VPC subnets are configured correctly
+            vpcSubnets: [
+                { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+                { subnetType: ec2.SubnetType.PUBLIC }
+            ],
         });
 
-        // Create Managed Node Group with minimal configuration
+        // EBS CSI DRIVER PERMISSIONS:
+        // REMOVED: Manual EBS CSI Policy - Not needed when using EKS Add-on
+        //
+        // WHY REMOVED:
+        // - When installing 'aws-ebs-csi-driver' as EKS Add-on (line ~185), AWS automatically:
+        //   1. Creates the necessary IAM role with required permissions
+        //   2. Associates it with the EBS CSI Driver service account
+        //   3. Grants permissions for: ec2:CreateVolume, ec2:AttachVolume, etc.
+        //
+        // MANUAL POLICY WAS REDUNDANT and could cause conflicts
+
+        // Create Managed Node Group with EBS permissions
         this.nodeGroup = new eksv2.Nodegroup(this, 'EksNodeGroup', {
             cluster: this.cluster,
             instanceTypes: props.nodeGroupInstanceTypes || [
@@ -50,6 +106,31 @@ export class EksConstruct extends Construct {
             desiredSize: props.desiredSize || 2,
             amiType: eksv2.NodegroupAmiType.AL2_X86_64,
             capacityType: eksv2.CapacityType.ON_DEMAND,
+        });
+
+        // NOTE: No need to attach EBS CSI policy - handled by EKS Add-on automatically
+
+        // VPC ENDPOINTS FOR ELB:
+        // REMOVED: InterfaceVpcEndpoint for ELB - Not needed for public LoadBalancers
+        //
+        // WHY REMOVED:
+        // - VPC Endpoints allow private access to AWS services from within VPC
+        // - For PUBLIC LoadBalancers (internet-facing), this is counterproductive
+        // - Public LBs need to be in PUBLIC subnets with Internet Gateway
+        // - NAT Gateway already handles outbound traffic from private subnets
+        // - VPC Endpoint would only be useful for private LBs or cross-region access
+
+        // Configure LoadBalancer subnets to use public subnets
+        const publicSubnets = this.vpc.selectSubnets({
+            subnetType: ec2.SubnetType.PUBLIC,
+        });
+
+        // Add tags for LoadBalancer configuration
+        cdk.Tags.of(this.cluster).add('kubernetes.io/cluster/' + props.clusterName, 'owned');
+        cdk.Tags.of(this.cluster).add('kubernetes.io/role/elb', '');
+        publicSubnets.subnets.forEach((subnet, index) => {
+            cdk.Tags.of(subnet).add('kubernetes.io/cluster/' + props.clusterName, 'owned');
+            cdk.Tags.of(subnet).add('kubernetes.io/role/elb', '');
         });
 
         // Apply tags if provided
@@ -69,6 +150,29 @@ export class EksConstruct extends Construct {
         }
 
         // Outputs are handled by EksFactory to avoid duplicates
+    }
+
+    /**
+     * Get public subnets for LoadBalancer services
+     */
+    public getPublicSubnets(): ec2.ISubnet[] {
+        return this.vpc.selectSubnets({
+            subnetType: ec2.SubnetType.PUBLIC,
+        }).subnets;
+    }
+
+    /**
+     * Create a public LoadBalancer service configuration
+     */
+    public createPublicLoadBalancerAnnotations(): { [key: string]: string } {
+        return {
+            'service.beta.kubernetes.io/aws-load-balancer-type': 'nlb',
+            'service.beta.kubernetes.io/aws-load-balancer-scheme': 'internet-facing',
+            'service.beta.kubernetes.io/aws-load-balancer-nlb-target-type': 'ip',
+            'service.beta.kubernetes.io/aws-load-balancer-subnets': this.getPublicSubnets()
+                .map(subnet => subnet.subnetId)
+                .join(','),
+        };
     }
 
     /**

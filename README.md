@@ -68,6 +68,7 @@ npm run status
 - ✅ **Auto-configuración**: Instala todos los add-ons esenciales automáticamente
 - ✅ **Outputs**: Muestra todos los comandos y endpoints importantes
 - ✅ **Verificación**: Confirma que todo esté funcionando correctamente
+- 📋 **Próximo paso**: Sigue [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md) e [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
 
 ### 🔄 Opción Paso a Paso (Manual)
 
@@ -124,6 +125,14 @@ kubectl get pods -n kube-system
 kubectl get nodes --label-columns=eks.amazonaws.com/nodegroup
 ```
 
+### 6. Próximos Pasos
+```bash
+# Después de tener el cluster listo:
+# 1. Instala kubectl y Helm siguiendo INSTALL_KUBERNETES.md
+# 2. Instala Devtron siguiendo INSTALL_DEVTRON.md
+# 3. ¡Comienza a desplegar tus aplicaciones!
+```
+
 ## 🔧 Solución de problemas comunes
 
 ### Problema: "No se puede conectar al cluster"
@@ -176,10 +185,13 @@ npx cdk destroy --profile EKS_PROFILE
 - **Documentación AWS EKS**: https://docs.aws.amazon.com/eks/
 - **AWS CDK Documentation**: https://docs.aws.amazon.com/cdk/
 - **Configuraciones personalizadas**: Edita `lib/construct/eks-construct.ts`
+- 📖 **[Guía de instalación de Kubernetes](INSTALL_KUBERNETES.md)**: Instalar kubectl y Helm
+- 📖 **[Guía de instalación de Devtron](INSTALL_DEVTRON.md)**: Desplegar Devtron en EKS
 
 ## 🎯 Consejos
 
 - **Primera vez**: Usa el workflow de despliegue directo con `npm run deploy`
+- **Después del deploy**: Sigue las guías [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md) e [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
 - **Producción**: Aumenta el número de nodos y configura auto-scaling según tus necesidades
 - **Desarrollo**: El cluster está listo para desplegar tus aplicaciones inmediatamente
 - **Comandos rápidos**:
@@ -253,18 +265,41 @@ aws eks update-kubeconfig --region us-east-1 --name TU-CLUSTER-NAME --profile EK
 
 ## 🔄 Versiones de Kubernetes
 
-### Versión actual del proyecto: **1.32** (Soporte estándar)
+### 📊 Clúster Actual: `devtron-dev-cluster`
+- **Versión**: 1.32
+- **Proveedor**: Amazon EKS
+
+### 📅 Información de Soporte para Kubernetes 1.32
+
+**Soporte Estándar:**
 - ✅ **Disponible**: Sí (usada actualmente en el proyecto)
 - ✅ **Liberada en CDK**: Disponible
-- ✅ **Próxima liberación AWS EKS**: Enero 2025 (según documentación)
-- ✅ **Fin soporte estándar**: Marzo 2026
-- ✅ **Fin soporte extendido**: Marzo 2027
-- ✅ **Última versión disponible** en CDK
+- ✅ **Fin soporte estándar**: **22 de marzo de 2026**
+- ✅ **Próxima liberación AWS EKS**: Enero 2025
 
-### Según documentación AWS EKS:
-La [documentación oficial](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html) menciona:
-- **1.33** (Liberación: Mayo 2025)
-- **1.32** (Liberación: Enero 2025) ← *Usada en el proyecto*
+**Soporte Extendido:**
+- ⚠️ **Disponible después del 22 de marzo de 2026**
+- 💰 **Costos adicionales** aplican durante soporte extendido
+- 📈 **Recomendación**: Actualizar a la versión 1.33 antes del 22 de marzo de 2026
+
+### 🎯 Opciones para Evitar Soporte Extendido
+
+Si no deseas usar soporte extendido, puedes:
+
+1. **Actualizar el clúster** a la versión 1.33 cuando esté disponible
+2. **Gestionar la política de versiones** de Kubernetes
+3. **Planificar la migración** con antelación
+
+> 💡 **Nota importante**: El soporte extendido tiene costos adicionales. Para más información, consulta la [página de precios de AWS EKS](https://aws.amazon.com/eks/pricing/) y la [documentación de políticas de versiones](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html).
+
+### 📋 Calendario de Versiones AWS EKS
+
+| Versión | Estado | Soporte Estándar | Soporte Extendido |
+|---------|--------|------------------|-------------------|
+| **1.33** | Próximamente | Mayo 2025 - Mayo 2026 | Mayo 2026 - Mayo 2027 |
+| **1.32** | Actual | Enero 2025 - **Marzo 2026** | **Marzo 2026** - Marzo 2027 |
+| **1.31** | Estándar | Octubre 2024 - Octubre 2025 | Octubre 2025 - Octubre 2026 |
+| **1.30** | Extendido | Julio 2024 - Julio 2025 | Julio 2025 - Julio 2026 |
 
 ### Para cambiar la versión:
 ```typescript
@@ -284,7 +319,7 @@ kubernetesVersion: eksv2.KubernetesVersion.V1_30, // Soporte extendido
 
 | Componente | Estado | Descripción |
 |------------|--------|-------------|
-| **EKS Cluster** | ✅ Automático | Cluster Kubernetes 1.32 con control plane |
+| **EKS Cluster** | ✅ Automático | Cluster `devtron-dev-cluster` Kubernetes 1.32 con control plane |
 | **VPC** | ✅ Automático | VPC dedicada con subnets públicas/privadas |
 | **Node Group** | ✅ Automático | Grupo de nodos con auto-scaling (2-10 nodos) |
 | **VPC CNI** | ✅ Automático | Networking para pods |
@@ -293,3 +328,52 @@ kubernetesVersion: eksv2.KubernetesVersion.V1_30, // Soporte extendido
 | **EBS CSI Driver** | ✅ Automático | Storage persistente con EBS |
 
 ¡Tu cluster EKS estará listo en menos de 15 minutos! 🎉
+
+## 📋 Próximos Pasos Después del Deploy
+
+Una vez que tengas tu cluster EKS desplegado y funcionando, sigue estos pasos para completar la instalación:
+
+### 1. 🛠️ Preparar tu Entorno Local
+
+**Instala los clientes necesarios en tu máquina:**
+- 📖 **[Sigue la guía completa](INSTALL_KUBERNETES.md)** para instalar kubectl y Helm
+- ⏱️ **Tiempo estimado:** 10-15 minutos
+- ✅ **Verificación:** `kubectl version --client` y `helm version`
+
+### 2. 🚀 Instalar Devtron
+
+**Despliega Devtron con CI/CD en tu cluster:**
+- 📖 **[Sigue la guía detallada](INSTALL_DEVTRON.md)** para instalar Devtron
+- 🎯 **Incluye:** Conexión al cluster, instalación con Helm, configuración inicial
+- ✅ **Resultado:** Dashboard de Devtron accesible
+
+### 3. 🔗 Conectar y Verificar
+
+**Conecta a tu cluster y verifica todo esté funcionando:**
+```bash
+# Conectar automáticamente al cluster
+npm run connect-cluster
+
+# Verificar el estado del cluster
+npm run status
+
+# Ver todos los pods (después de instalar Devtron)
+npm run pods
+```
+
+### 4. 🎯 Comenzar a Usar Devtron
+
+Una vez instalado Devtron, podrás:
+- ✅ **Configurar pipelines CI/CD**
+- ✅ **Desplegar aplicaciones**
+- ✅ **Gestionar entornos**
+- ✅ **Monitorear tu cluster**
+
+## 📚 Documentación de Instalación
+
+| Guía | Propósito | Tiempo Estimado |
+|------|-----------|----------------|
+| **[INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md)** | Instalar kubectl y Helm | 10-15 min |
+| **[INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)** | Instalar Devtron en EKS | 15-20 min |
+
+¡Sigue estas guías en orden para tener un entorno completo de desarrollo con Kubernetes y Devtron! 🚀
