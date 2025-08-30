@@ -14,15 +14,15 @@ Despliega automáticamente un cluster Amazon EKS optimizado con add-ons esencial
 ## 📋 Requisitos previos
 
 ### Software necesario:
-- **Node.js** 18+
+- **Node.js** 20+
 - **AWS CLI v2**
 - **AWS CDK CLI**
 - **Cuenta AWS** con permisos para EKS, EC2, VPC, y IAM
 
 ### Versiones de Kubernetes soportadas:
-- **1.33** (Próximamente - soporte estándar - ver documentación AWS)
-- **1.32** (Disponible en CDK - usada en el proyecto)
-- **1.31** (Soporte estándar - actual)
+- **1.33** (Próximamente - ver documentación de AWS `@aws-cdk/aws-eks-v2`)
+- **1.32** (Disponible en CDK `@aws-cdk/aws-eks-v2` - usada en el proyecto)
+- **1.31** (Soporte estándar)
 - **1.30** (Soporte extendido)
 - **1.29** (Soporte extendido)
 
@@ -57,10 +57,7 @@ npm install -g aws-cdk
 
 ```bash
 # Desplegar cluster EKS completo con add-ons
-npm run deploy
-
-# Verificar el despliegue
-npm run status
+`npm run deploy`
 ```
 
 **¿Qué hace esto?**
@@ -68,7 +65,7 @@ npm run status
 - ✅ **Auto-configuración**: Instala todos los add-ons esenciales automáticamente
 - ✅ **Outputs**: Muestra todos los comandos y endpoints importantes
 - ✅ **Verificación**: Confirma que todo esté funcionando correctamente
-- 📋 **Próximo paso**: Sigue [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md) e [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
+- 📋 **Próximo paso**: Sigue [`INSTALL_KUBERNETES.md`](`INSTALL_KUBERNETES.md`) e [`INSTALL_DEVTRON.md`](`INSTALL_DEVTRON.md`)
 
 ### 🔄 Opción Paso a Paso (Manual)
 
@@ -128,8 +125,8 @@ kubectl get nodes --label-columns=eks.amazonaws.com/nodegroup
 ### 6. Próximos Pasos
 ```bash
 # Después de tener el cluster listo:
-# 1. Instala kubectl y Helm siguiendo INSTALL_KUBERNETES.md
-# 2. Instala Devtron siguiendo INSTALL_DEVTRON.md
+# 1. Instala kubectl y Helm siguiendo `INSTALL_KUBERNETES.md`
+# 2. Instala Devtron siguiendo `INSTALL_DEVTRON.md`
 # 3. ¡Comienza a desplegar tus aplicaciones!
 ```
 
@@ -184,60 +181,56 @@ npx cdk destroy --profile EKS_PROFILE
 
 - **Documentación AWS EKS**: https://docs.aws.amazon.com/eks/
 - **AWS CDK Documentation**: https://docs.aws.amazon.com/cdk/
-- **Configuraciones personalizadas**: Edita `lib/construct/eks-construct.ts`
-- 📖 **[Guía de instalación de Kubernetes](INSTALL_KUBERNETES.md)**: Instalar kubectl y Helm
-- 📖 **[Guía de instalación de Devtron](INSTALL_DEVTRON.md)**: Desplegar Devtron en EKS
+- **Configuraciones personalizadas**: Edita ``lib/construct/eks-construct.ts``
+- 📖 **[Guía de instalación de Kubernetes](`INSTALL_KUBERNETES.md`)**: Instalar kubectl y Helm
+- 📖 **[Guía de instalación de Devtron](`INSTALL_DEVTRON.md`)**: Desplegar Devtron en EKS
 
 ## 🎯 Consejos
 
-- **Primera vez**: Usa el workflow de despliegue directo con `npm run deploy`
-- **Después del deploy**: Sigue las guías [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md) e [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
+- **Primera vez**: Usa el workflow de despliegue directo con ``npm run deploy``
+- **Después del deploy**: Sigue las guías [`INSTALL_KUBERNETES.md`](`INSTALL_KUBERNETES.md`) e [`INSTALL_DEVTRON.md`](`INSTALL_DEVTRON.md`)
 - **Producción**: Aumenta el número de nodos y configura auto-scaling según tus necesidades
 - **Desarrollo**: El cluster está listo para desplegar tus aplicaciones inmediatamente
 - **Comandos rápidos**:
-  - **Desplegar**: `npm run deploy` (despliega cluster EKS)
-  - **Conectar**: `npm run connect-cluster` (configura kubectl automáticamente)
-  - **Ayuda conectar**: `npm run connect` (muestra instrucciones de conexión)
-  - **Verificar**: `npm run status` (muestra estado del cluster)
+  - **Desplegar**: ``npm run deploy`` (despliega cluster EKS)
+  - **Conectar**: ```npm run connect`-cluster`` (configura kubectl automáticamente)
+  - **Ayuda conectar**: ``npm run connect`` (muestra instrucciones de conexión)
+  - **Verificar**: ``npm run status`` (muestra estado del cluster)
   - **Pods**: `npm run pods` (lista todos los pods)
   - **Servicios**: `npm run services` (lista todos los servicios)
   - **Nodos**: `npm run nodes` (información de node groups)
   - **Eventos**: `npm run events` (eventos recientes del cluster)
-  - **Recursos**: `npm run top` (uso de CPU/memoria)
-  - **Almacenamiento**: `npm run storage` (storage classes y PVCs)
-  - **Salud**: `npm run health` (verificación de estado)
-  - **Destruir**: `npm run destroy` (elimina todo el cluster)
-- **Configuración**: Edita `lib/stack/eks/index.ts` para personalizar el cluster
+  - **Logs**: `npm run logs` (ver logs de pods)
+  - **Destruir**: ``npm run destroy`` (elimina todo el cluster)
+- **Configuración**: Edita ``lib/stack/eks/index.ts`` para personalizar el cluster
 - **Outputs optimizados**: Eliminados duplicados, agregados comandos útiles
 
 ## 🛠️ Scripts Disponibles
 
 | Comando | Descripción |
 |---------|-------------|
-| `npm run deploy` | Desplegar cluster EKS |
-| `npm run connect` | Mostrar instrucciones detalladas de conexión |
-| `npm run connect-cluster` | Conectar automáticamente al cluster (con verificación) |
-| `npm run status` | Verificar estado del cluster |
+| ``npm run deploy`` | Desplegar cluster EKS |
+| ``npm run destroy`` | Eliminar cluster EKS |
+| ``npm run connect`` | Mostrar instrucciones detalladas de conexión |
+| ```npm run connect`-cluster`` | Conectar automáticamente al cluster |
+| ``npm run status`` | Verificar estado del cluster |
 | `npm run pods` | Listar todos los pods |
 | `npm run services` | Listar todos los servicios |
 | `npm run nodes` | Información de node groups |
 | `npm run events` | Eventos recientes del cluster |
-| `npm run top` | Uso de CPU/memoria |
-| `npm run storage` | Storage classes y PVCs |
-| `npm run health` | Verificación de estado completo |
-| `npm run destroy` | Eliminar cluster EKS |
+| `npm run logs` | Ver logs de pods (requiere argumentos) |
+| `npm run fix-lb-public` | Corregir LoadBalancer para acceso público |
+| `npm run verify-lb` | Verificar estado del LoadBalancer |
 
 ### Comandos Interactivos:
 | Comando | Uso |
 |---------|-----|
-| `npm run logs <pod-name>` | Ver logs de un pod |
-| `npm run describe <resource>` | Describir un recurso |
-| `npm run exec <pod-name>` | Ejecutar comandos en un pod |
-| `npm run scale <deployment>` | Escalar un deployment |
-| `npm run port-forward <svc>` | Port forwarding |
-| `npm run apply <file>` | Aplicar manifest YAML |
-| `npm run delete <resource>` | Eliminar recursos |
-| `npm run watch` | Monitorear pods en tiempo real |
+| `npm run logs <pod-name>` | Ver logs de un pod específico |
+| `kubectl describe <resource>` | Describir recursos (usa kubectl directamente) |
+| `kubectl exec -it <pod>` | Ejecutar comandos en un pod |
+| `kubectl port-forward <svc>` | Port forwarding de servicios |
+| `kubectl apply -f <file>` | Aplicar manifests YAML |
+| `kubectl delete <resource>` | Eliminar recursos |
 
 ### 🔗 Conexión al Cluster
 
@@ -245,17 +238,17 @@ npx cdk destroy --profile EKS_PROFILE
 
 1. **Ver instrucciones de conexión:**
    ```bash
-   npm run connect
+   `npm run connect`
    ```
 
 2. **Conectar automáticamente:**
    ```bash
-   npm run connect-cluster
+   ``npm run connect`-cluster`
    ```
 
 3. **Verificar conexión:**
    ```bash
-   npm run status
+   `npm run status`
    ```
 
 **Si el cluster tiene un nombre diferente, conecta manualmente:**
@@ -274,13 +267,12 @@ aws eks update-kubeconfig --region us-east-1 --name TU-CLUSTER-NAME --profile EK
 **Soporte Estándar:**
 - ✅ **Disponible**: Sí (usada actualmente en el proyecto)
 - ✅ **Liberada en CDK**: Disponible
-- ✅ **Fin soporte estándar**: **22 de marzo de 2026**
-- ✅ **Próxima liberación AWS EKS**: Enero 2025
+- ✅ **Fin soporte estándar**: Marzo 2026
 
 **Soporte Extendido:**
-- ⚠️ **Disponible después del 22 de marzo de 2026**
+- ⚠️ **Disponible después de marzo 2026**
 - 💰 **Costos adicionales** aplican durante soporte extendido
-- 📈 **Recomendación**: Actualizar a la versión 1.33 antes del 22 de marzo de 2026
+- 📈 **Recomendación**: Planificar actualización antes de marzo 2026 para evitar soporte extendido
 
 ### 🎯 Opciones para Evitar Soporte Extendido
 
@@ -296,14 +288,14 @@ Si no deseas usar soporte extendido, puedes:
 
 | Versión | Estado | Soporte Estándar | Soporte Extendido |
 |---------|--------|------------------|-------------------|
-| **1.33** | Próximamente | Mayo 2025 - Mayo 2026 | Mayo 2026 - Mayo 2027 |
-| **1.32** | Actual | Enero 2025 - **Marzo 2026** | **Marzo 2026** - Marzo 2027 |
-| **1.31** | Estándar | Octubre 2024 - Octubre 2025 | Octubre 2025 - Octubre 2026 |
-| **1.30** | Extendido | Julio 2024 - Julio 2025 | Julio 2025 - Julio 2026 |
+| **1.32** | Actual | Enero 2025 - Marzo 2026 | Marzo 2026 - Marzo 2027 |
+| **1.31** | Estándar | Septiembre 2024 - Noviembre 2025 | Noviembre 2025 - Noviembre 2026 |
+| **1.30** | Extendido | Mayo 2024 - Julio 2025 | Julio 2025 - Julio 2026 |
+| **1.29** | Extendido | Enero 2024 - Marzo 2025 | Marzo 2025 - Marzo 2026 |
 
 ### Para cambiar la versión:
 ```typescript
-// En lib/stack/eks/index.ts
+// En `lib/stack/eks/index.ts`
 kubernetesVersion: eksv2.KubernetesVersion.V1_32, // Actual (usada por defecto)
 // o
 kubernetesVersion: eksv2.KubernetesVersion.V1_31, // Soporte estándar
@@ -313,7 +305,7 @@ kubernetesVersion: eksv2.KubernetesVersion.V1_30, // Soporte extendido
 // kubernetesVersion: eksv2.KubernetesVersion.V1_33,
 ```
 
-> 📋 **Nota**: El proyecto usa la versión más reciente disponible en AWS CDK. Según la [documentación oficial de AWS EKS](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html), la versión 1.33 estará disponible próximamente.
+> 📋 **Nota**: El proyecto usa la versión más reciente disponible en AWS CDK. Según la [documentación oficial de AWS EKS](https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html), la versión 1.33 estará disponible próximamente en `@aws-cdk/aws-eks-v2`.
 
 ## 💡 ¿Qué incluye la instalación?
 
@@ -336,14 +328,14 @@ Una vez que tengas tu cluster EKS desplegado y funcionando, sigue estos pasos pa
 ### 1. 🛠️ Preparar tu Entorno Local
 
 **Instala los clientes necesarios en tu máquina:**
-- 📖 **[Sigue la guía completa](INSTALL_KUBERNETES.md)** para instalar kubectl y Helm
+- 📖 **[Sigue la guía completa](`INSTALL_KUBERNETES.md`)** para instalar kubectl y Helm
 - ⏱️ **Tiempo estimado:** 10-15 minutos
 - ✅ **Verificación:** `kubectl version --client` y `helm version`
 
 ### 2. 🚀 Instalar Devtron
 
 **Despliega Devtron con CI/CD en tu cluster:**
-- 📖 **[Sigue la guía detallada](INSTALL_DEVTRON.md)** para instalar Devtron
+- 📖 **[Sigue la guía detallada](`INSTALL_DEVTRON.md`)** para instalar Devtron
 - 🎯 **Incluye:** Conexión al cluster, instalación con Helm, configuración inicial
 - ✅ **Resultado:** Dashboard de Devtron accesible
 
@@ -352,10 +344,10 @@ Una vez que tengas tu cluster EKS desplegado y funcionando, sigue estos pasos pa
 **Conecta a tu cluster y verifica todo esté funcionando:**
 ```bash
 # Conectar automáticamente al cluster
-npm run connect-cluster
+``npm run connect`-cluster`
 
 # Verificar el estado del cluster
-npm run status
+`npm run status`
 
 # Ver todos los pods (después de instalar Devtron)
 npm run pods
@@ -373,7 +365,7 @@ Una vez instalado Devtron, podrás:
 
 | Guía | Propósito | Tiempo Estimado |
 |------|-----------|----------------|
-| **[INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md)** | Instalar kubectl y Helm | 10-15 min |
-| **[INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)** | Instalar Devtron en EKS | 15-20 min |
+| **[`INSTALL_KUBERNETES.md`](`INSTALL_KUBERNETES.md`)** | Instalar kubectl y Helm | 10-15 min |
+| **[`INSTALL_DEVTRON.md`](`INSTALL_DEVTRON.md`)** | Instalar Devtron en EKS | 15-20 min |
 
 ¡Sigue estas guías en orden para tener un entorno completo de desarrollo con Kubernetes y Devtron! 🚀

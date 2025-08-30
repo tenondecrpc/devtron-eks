@@ -1,7 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import * as eksv2 from '@aws-cdk/aws-eks-v2-alpha';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 export interface EksConstructProps {
