@@ -187,13 +187,13 @@ npx cdk destroy --profile EKS_PROFILE
 
 ## 🎯 Consejos
 
-- **Primera vez**: Usa el workflow de despliegue directo con ``npm run deploy``
+- **Primera vez**: Usa el workflow de despliegue directo con `npm run deploy`
 - **Después del deploy**: Sigue las guías [`INSTALL_KUBERNETES.md`](`INSTALL_KUBERNETES.md`) e [`INSTALL_DEVTRON.md`](`INSTALL_DEVTRON.md`)
 - **Producción**: Aumenta el número de nodos y configura auto-scaling según tus necesidades
 - **Desarrollo**: El cluster está listo para desplegar tus aplicaciones inmediatamente
 - **Comandos rápidos**:
   - **Desplegar**: ``npm run deploy`` (despliega cluster EKS)
-  - **Conectar**: ```npm run connect`-cluster`` (configura kubectl automáticamente)
+  - **Conectar**: `npm run connect-cluster` (configura kubectl automáticamente)
   - **Ayuda conectar**: ``npm run connect`` (muestra instrucciones de conexión)
   - **Verificar**: ``npm run status`` (muestra estado del cluster)
   - **Pods**: `npm run pods` (lista todos los pods)
@@ -201,19 +201,19 @@ npx cdk destroy --profile EKS_PROFILE
   - **Nodos**: `npm run nodes` (información de node groups)
   - **Eventos**: `npm run events` (eventos recientes del cluster)
   - **Logs**: `npm run logs` (ver logs de pods)
-  - **Destruir**: ``npm run destroy`` (elimina todo el cluster)
-- **Configuración**: Edita ``lib/stack/eks/index.ts`` para personalizar el cluster
+  - **Destruir**: `npm run destroy` (elimina todo el cluster)
+- **Configuración**: Edita `lib/stack/eks/index.ts` para personalizar el cluster
 - **Outputs optimizados**: Eliminados duplicados, agregados comandos útiles
 
 ## 🛠️ Scripts Disponibles
 
 | Comando | Descripción |
 |---------|-------------|
-| ``npm run deploy`` | Desplegar cluster EKS |
-| ``npm run destroy`` | Eliminar cluster EKS |
-| ``npm run connect`` | Mostrar instrucciones detalladas de conexión |
-| ```npm run connect`-cluster`` | Conectar automáticamente al cluster |
-| ``npm run status`` | Verificar estado del cluster |
+| `npm run deploy` | Desplegar cluster EKS |
+| `npm run destroy` | Eliminar cluster EKS |
+| `npm run connect` | Mostrar instrucciones detalladas de conexión |
+| `npm run connect-cluster` | Conectar automáticamente al cluster |
+| `npm run status` | Verificar estado del cluster |
 | `npm run pods` | Listar todos los pods |
 | `npm run services` | Listar todos los servicios |
 | `npm run nodes` | Información de node groups |
@@ -238,17 +238,17 @@ npx cdk destroy --profile EKS_PROFILE
 
 1. **Ver instrucciones de conexión:**
    ```bash
-   `npm run connect`
+   npm run connect
    ```
 
 2. **Conectar automáticamente:**
    ```bash
-   ``npm run connect`-cluster`
+   npm run connect-cluster
    ```
 
 3. **Verificar conexión:**
    ```bash
-   `npm run status`
+   npm run status
    ```
 
 **Si el cluster tiene un nombre diferente, conecta manualmente:**
