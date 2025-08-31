@@ -19,7 +19,7 @@ Before installing Devtron, ensure you have:
 
 - **Version**: Latest stable Devtron with CI/CD module
 - **Namespace**: `devtroncd`
-- **Total time**: ~20-50 minutes (varies by AWS region and capacity)
+- **Total time**: **⏱️ ~20-50 minutes** (varies by AWS region and capacity)
 - **Documentation**: [https://docs.devtron.ai/install/install-devtron-with-cicd](https://docs.devtron.ai/install/install-devtron-with-cicd)
 - **Helm Version Required**: 3.8+
 
@@ -33,7 +33,7 @@ aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profil
 kubectl cluster-info && kubectl get nodes
 ```
 
-**⏱️ Estimated time: 1-2 minutes**
+**⏱️ 🚀 Estimated time: 1-2 minutes**
 
 ## Step 2: Install Devtron
 
@@ -52,7 +52,7 @@ helm install devtron devtron/devtron-operator \
   --set installer.modules={cicd}
 ```
 
-**⏱️ Estimated time: 3-8 minutes**
+**⏱️ ⚡ Estimated time: 3-8 minutes**
 
 ## Step 3: Wait for Complete Installation
 
@@ -62,7 +62,7 @@ kubectl -n devtroncd get installers installer-devtron \
 ```
 
 **States:**
-- `Downloaded` → Waiting (normal, wait 10-15 min)
+- `Downloaded` → Waiting (normal, wait 20-45 min)
 - `Applied` → ✅ Completed
 - `OutOfSync` → ❌ Error (check logs)
 
@@ -75,16 +75,28 @@ kubectl get pods -n devtroncd
 kubectl get svc -n devtroncd
 ```
 
-**⏱️ Estimated time: 10-20 minutes**
+**⏱️ 🕐 Estimated time: 20-50 minutes**
+
+> **🚨 CRITICAL WARNING**: This step can take **20-50 minutes**! Don't panic if you see pods restarting or failing - it's completely normal. The installation time varies significantly based on AWS region, cluster capacity, and network conditions. PostgreSQL initialization (336+ migrations) and PVC provisioning are the most time-consuming steps.
+
+### 📋 Installation Process Timeline
+
+1. **🚀 0-5 min**: Helm chart deployment and CRDs creation
+2. **⏳ 5-15 min**: PostgreSQL StatefulSet creation and PVC provisioning (pods may show as Pending)
+3. **⏳ 15-30 min**: PostgreSQL initialization and 336+ database migrations
+4. **⏳ 30-45 min**: Devtron services start and stabilize (may show CrashLoopBackOff initially)
+5. **✅ 45+ min**: All services running and LoadBalancer ready
+
+**Monitor progress with:**
+```bash
+kubectl get pods -n devtroncd -w
+```
 
 ## Step 4: Configure Access and Get Credentials
 
 Once Devtron shows `Applied` status, configure access:
 
 ```bash
-# Get the LoadBalancer hostname (for external access)
-kubectl get svc -n devtroncd devtron-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
-
 # Get admin password
 kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
 ```
@@ -92,7 +104,7 @@ kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWOR
 **Credentials:**
 - **Username:** `admin`
 - **Password:** [output from the command above]
-- **URL:** `http://<loadbalancer-hostname>` (external) or `http://localhost:8080` (with port forwarding)
+- **URL:** `http://localhost:8080` (with port forwarding)
 
 ### ⚠️ Important: Fix Devtron Service Configuration
 
@@ -103,10 +115,78 @@ After Devtron installation, the service selector needs to be corrected:
 kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'
 ```
 
-**⏱️ Estimated time: 1-2 minutes**
+**⏱️ 🚀 Estimated time: 1-2 minutes**
 
 **What this fixes:**
 - **Service Selector**: Changes from `app=devtron` to `app=dashboard` (correct pod selector)
+
+**Additional fixes (if needed):**
+
+**Fix service targetPort (if 404 errors persist)**
+```bash
+kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"ports":[{"name":"devtron","port":80,"targetPort":8080}]}}'
+```
+
+**Fix nginx configuration for static assets (if 404 errors for JS/CSS files)**
+```bash
+# Create ConfigMap with corrected nginx config
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-nginx-config
+  namespace: devtroncd
+data:
+  default.conf: |
+    server {
+      listen 8080;
+      listen [::]:8080;
+      root /usr/share/nginx/html;
+      index index.html index.htm;
+
+      # Handle /dashboard/ paths by rewriting to root
+      location /dashboard/ {
+        rewrite ^/dashboard/(.*)$ /$1 break;
+      }
+
+      location / {
+        set \$fallback_file /index.html;
+        set \$cache_control_header "max-age=3600";
+
+        # add the caching header for assets file and fallback to 404
+        if (\$uri ~* \.(js|js\.map|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json)$) {
+          set \$cache_control_header "public, max-age=31536000, immutable";
+          set \$fallback_file =404;
+        }
+
+        if (\$uri ~* "\/(service-worker|env-config)\.js$") {
+            set \$cache_control_header "no-cache";
+        }
+
+        add_header Cache-Control \$cache_control_header;
+        try_files \$uri \$uri/ \$fallback_file =404;
+      }
+
+      location /health {
+        try_files \$uri \$uri/ /health.html =404;
+      }
+    }
+EOF
+
+# Update deployment to use new config
+kubectl patch deployment dashboard -n devtroncd --type json -p '[
+  {
+    "op": "replace",
+    "path": "/spec/template/spec/containers/0/volumeMounts",
+    "value": [{"name": "nginx-config", "mountPath": "/etc/nginx/conf.d/default.conf", "subPath": "default.conf"}]
+  },
+  {
+    "op": "replace",
+    "path": "/spec/template/spec/volumes",
+    "value": [{"name": "nginx-config", "configMap": {"name": "dashboard-nginx-config"}}]
+  }
+]'
+```
 
 ## Useful Commands
 
@@ -114,8 +194,8 @@ kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"select
 # Check cluster status
 kubectl cluster-info && kubectl get nodes
 
-# Get Devtron admin password and URL
-kubectl get svc -n devtroncd devtron-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' && kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
+# Get Devtron admin password
+kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
 
 # Fix service selector configuration
 kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'
@@ -129,13 +209,35 @@ kubectl port-forward svc/devtron-service -n devtroncd 8080:80
 
 ## Basic Troubleshooting
 
+### Normal Installation States (Don't Panic!)
+
+During installation, you may see these states which are **completely normal**:
+
+- **Pods in CrashLoopBackOff**: Services like `devtron`, `kubelink`, `kubewatch`, `lens` may restart multiple times while waiting for dependencies
+- **Pods in Pending**: `postgresql-postgresql-0`, `devtron-nats-0`, `git-sensor-0` wait for PersistentVolumeClaims to be provisioned
+- **Migration pods failing**: `postgresql-migrate-*` pods may show failures but will complete successfully
+- **Pods restarting**: All services restart 2-3 times as dependencies become available
+
+### Common Web UI Issues After Installation
+
+If you can access Devtron but see errors in the browser console:
+
+- **"Unexpected number" syntax errors**: Usually caused by corrupted JavaScript files. The automatic nginx fixes should resolve this
+- **404 errors for assets**: Indicates nginx path mapping issues. The `/dashboard/` rewrite rules should fix this
+- **MIME type errors**: Files served as "text/html" instead of JavaScript. The nginx configuration includes proper MIME type headers
+
 ### Common Issues and Solutions:
 
-- **Slow installation:** Wait 15-20 minutes, it's normal for PostgreSQL initialization and service mesh setup
+- **Slow installation:** **⏳ Wait 20-50 minutes**, it's normal for PostgreSQL initialization (336+ migrations), PVC provisioning, and service mesh setup
 - **Stuck in 'Downloaded' state:** Check pod status with `kubectl get pods -n devtroncd -w`
+- **Pods in CrashLoopBackOff:** This is normal during initialization - services restart as dependencies become available
+- **Migration pods failing:** These will complete successfully despite initial failures
+- **PostgreSQL migration process:** Devtron runs 336+ database migrations. Migration pods may fail initially if PostgreSQL isn't ready, but they retry automatically and complete successfully
 - **Not accessible:** Run `kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'` to fix service selector configuration
 - **Port forwarding not working:** Ensure `kubectl port-forward` is running and try different local ports
 - **Service selector issue:** Run `kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'` to fix pod selector mismatch
+- **Port forwarding disconnects with "sandbox not found":** This is a common EKS/Kubernetes issue. Simply restart port forwarding: `kubectl port-forward svc/devtron-service -n devtroncd 8080:80`
+- **404 errors for JavaScript/CSS files or "Unexpected number" syntax errors:** This indicates nginx configuration issues. The automatic fixes above should resolve this, but if problems persist, the files may need manual correction
 
 ### Debug Commands:
 
@@ -191,10 +293,7 @@ kubectl port-forward svc/devtron-service -n devtroncd 8080:80
 kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
 ```
 
-**Or get both URL and password:**
-```bash
-kubectl get svc -n devtroncd devtron-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' && kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
-```
+**Note:** Use port forwarding to access Devtron at `http://localhost:8080`
 
 ### Access Devtron
 
@@ -254,9 +353,119 @@ If you cannot access Devtron:
 - **Kubernetes**: Compatible with EKS 1.30+ (tested with 1.32)
 - **Helm**: Requires Helm 3.8+
 - **Devtron**: Latest stable version (automatically pulled from Helm repo)
-- **AWS Region**: All regions supported, but LoadBalancer provisioning may vary by region capacity
+- **AWS Region**: All regions supported for EKS cluster deployment
 
 > **Note**: This guide is optimized for EKS 1.32 (current project default). Devtron generally supports Kubernetes versions 1.24+, but some features may require newer versions.
+
+## ⏱️ Installation Timeline Summary
+
+| Step | Duration | What Happens |
+|------|----------|-------------|
+| **Step 1** | 🚀 1-2 min | Connect to EKS cluster |
+| **Step 2** | ⚡ 3-8 min | Install Devtron via Helm |
+| **Step 3** | 🕐 **20-50 min** | Wait for complete installation |
+| **Step 4** | 🚀 1-2 min | Configure access and get credentials |
+| **Step 5** | ✅ Immediate | Access Devtron dashboard |
+
+> **💡 Pro Tip**: The longest wait is **Step 3** - use `kubectl get pods -n devtroncd -w` to monitor progress!
+
+## 🗑️ **Devtron On-Demand Removal**
+
+If you need to completely remove Devtron from your cluster at any time, you have several options:
+
+### Quick Removal Commands (Recommended)
+
+Use the npm scripts for a clean and automated removal:
+
+```bash
+# Complete cleanup of Devtron
+npm run cleanup-devtron
+
+# Force cleanup (useful if resources are stuck)
+npm run cleanup-devtron-force
+
+# Preview what will be deleted (dry run)
+npm run cleanup-devtron-dry-run
+
+# Clean only Persistent Volumes Claims
+npm run cleanup-devtron-pvcs
+```
+
+### Manual Removal Steps
+
+If you prefer to do it manually or need more control:
+
+#### Step 1: Uninstall Helm Release
+```bash
+# Remove the Helm release
+helm uninstall devtron -n devtroncd --ignore-not-found=true
+```
+
+#### Step 2: Remove Namespaces
+```bash
+# Remove main Devtron namespace
+kubectl delete namespace devtroncd --ignore-not-found=true
+
+# Remove related namespaces (if they exist)
+kubectl delete namespace devtron-cd --ignore-not-found=true
+kubectl delete namespace devtron-ci --ignore-not-found=true
+kubectl delete namespace devtron-demo --ignore-not-found=true
+```
+
+#### Step 3: Clean Up Persistent Volumes (Optional)
+```bash
+# Check for remaining PVCs
+kubectl get pvc -A | grep -i devtron
+
+# Delete PVCs if needed
+kubectl delete pvc -n devtroncd --all
+
+# Check for PVs
+kubectl get pv | grep -i devtron
+```
+
+#### Step 4: Verify Cleanup
+```bash
+# Verify no Devtron resources remain
+kubectl get namespaces | grep -i devtron || echo "✅ No Devtron namespaces found"
+kubectl get pods -A | grep -i devtron || echo "✅ No Devtron pods found"
+kubectl get svc -A | grep -i devtron || echo "✅ No Devtron services found"
+helm list -A | grep -i devtron || echo "✅ No Devtron Helm releases found"
+```
+
+### ⚠️ **Important Notes**
+
+- **Data Loss**: Removing Devtron will delete all your applications, pipelines, and configurations
+- **Backup First**: Consider backing up important data before removal
+- **PVC Cleanup**: Persistent Volumes Claims may need manual cleanup if they persist
+- **LoadBalancer**: The AWS LoadBalancer created by Devtron may take a few minutes to be fully removed
+- **Cost Optimization**: Removing Devtron will reduce your AWS costs
+
+### Force Removal (If Normal Cleanup Fails)
+
+If the standard cleanup gets stuck, use force removal:
+
+```bash
+# Force delete namespace (use with caution)
+kubectl delete namespace devtroncd --ignore-not-found=true --timeout=30s --grace-period=0 --force
+kubectl delete namespace devtron-cd --ignore-not-found=true --timeout=30s --grace-period=0 --force
+kubectl delete namespace devtron-ci --ignore-not-found=true --timeout=30s --grace-period=0 --force
+kubectl delete namespace devtron-demo --ignore-not-found=true --timeout=30s --grace-period=0 --force
+```
+
+### 💡 **Reinstallation After Cleanup**
+
+After cleanup, you can reinstall Devtron by following the installation steps again:
+
+```bash
+# Reinstall Devtron
+helm repo add devtron https://helm.devtron.ai
+helm repo update devtron
+helm install devtron devtron/devtron-operator \
+  --create-namespace \
+  --namespace devtroncd \
+  --set installer.modules={cicd}
+```
 
 ## Support
 
