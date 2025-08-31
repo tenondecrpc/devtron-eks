@@ -182,6 +182,13 @@ cd devtron-manifests
 
 Once Devtron is installed and running, access it using port forwarding:
 
+### Get Admin Credentials
+
+```bash
+# Get admin password
+kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
+```
+
 ### Start Port Forwarding
 
 ```bash
@@ -190,13 +197,6 @@ kubectl port-forward svc/devtron-service -n devtroncd 8080:80
 ```
 
 **Note:** Keep this command running in a separate terminal window. The connection will remain active as long as the command is running.
-
-### Get Admin Credentials
-
-```bash
-# Get admin password
-kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
-```
 
 ### Access Devtron
 
