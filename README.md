@@ -14,12 +14,10 @@ Automatically deploy an optimized Amazon EKS cluster with essential add-ons usin
 ## 📋 Prerequisites
 
 ### Required Software:
-- **Node.js** 18+ (recommended 20 LTS)
+- **Node.js** 20+
 - **AWS CLI v2** (2.13.0+)
 - **AWS CDK CLI** (2.100.0+)
 - **AWS Account** with permissions for EKS, EC2, VPC, and IAM
-
-> ⚠️ **Note**: Make sure to use compatible versions. The project is tested with Node.js 20 LTS and AWS CDK 2.100+.
 
 ### Supported Kubernetes Versions:
 - **1.33** (Coming soon - see AWS documentation for `@aws-cdk/aws-eks-v2`)
@@ -72,14 +70,14 @@ npm run deploy
 
 #### 🎯 **After CDK Deployment:**
 
-**⏱️ Total time until cluster ready: 5-15 minutes**
-- **CDK Deploy**: 5-15 minutes
+**⏱️ Total time until cluster ready: 15-20 minutes**
+- **CDK Deploy**: 15-20 minutes (measured: ~17.9 minutes)
 - **EKS Cluster creation**: Included in CDK deploy
 - **Essential add-ons**: VPC CNI, CoreDNS, kube-proxy, EBS CSI Driver
 
 **📊 Expected progress:**
 ```
-0:00 - 0:15: CDK Deploy + Cluster creation
+0:00 - 0:20: CDK Deploy + Cluster creation
 ```
 
 **✅ At completion you'll have:**
@@ -101,8 +99,8 @@ npm run deploy
 - **Rollback issues**: If initialization fails, rollback is problematic
 - **State management**: CDK assumes resources are ready immediately
 
-#### ✅ **Adopted Solution:**
-- **Fast deploy**: CDK creates basic infrastructure (5-15 min)
+#### ✅ **Deploy Strategy:**
+- **CDK Deploy**: Creates complete EKS infrastructure (15-20 min)
 - **Separate initialization**: Devtron is installed but doesn't wait for completion
 - **Manual monitoring**: User verifies progress with npm commands
 - **Flexibility**: User decides when to verify vs wait automatically
@@ -126,7 +124,7 @@ npm run devtron-status
 - `OutOfSync` → ❌ Error (check logs)
 
 **⏱️ Verification checklist:**
-- [ ] CDK deploy completed (5-15 min)
+- [ ] CDK deploy completed (15-20 min)
 - [ ] EKS cluster operational
 - [ ] Devtron installed (status: Applied)
 - [ ] LoadBalancer accessible
@@ -134,8 +132,8 @@ npm run devtron-status
 
 #### 🎯 **If `installDevtron: false` (EKS cluster only):**
 
-**⏱️ Time: 5-15 minutes**
-- Only deploys basic EKS cluster
+**⏱️ Time: 15-20 minutes**
+- Deploys complete EKS cluster with all add-ons
 - You must manually follow [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
 
 > ⚠️ **Important**: Before running `npm run deploy`, make sure you have configured the environment variables. See the **"Configure Environment Variables"** section below.
@@ -278,14 +276,14 @@ npx cdk destroy --profile AWS_PROFILE
 ## 🎯 Tips
 
 - **First time**: Use the direct deployment workflow with `npm run deploy`
-- **With installDevtron=true**: Wait 20-50 minutes until dashboard is ready
+- **With installDevtron=true**: Wait 35-70 minutes until dashboard is ready
 - **With installDevtron=false**: Follow [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md) after deploy
 - **Monitoring**: Use `npm run progress` to see real-time status
 - **Production**: Increase nodes and configure auto-scaling according to needs
 - **Development**: Cluster ready for applications immediately
 - **Wait times**:
-  - **Cluster only**: 5-15 minutes
-  - **With Devtron**: 20-50 minutes total
+  - **Cluster only**: 15-20 minutes (measured: ~17.9 minutes)
+  - **With Devtron**: 35-70 minutes total
   - **LoadBalancer fix**: 3-7 additional minutes if needed
 
 ### ⚡ Quick Commands by Scenario
@@ -320,14 +318,14 @@ npm run status            # View cluster status
 ### ⚙️ Advanced Configuration
 - **Customize cluster**: Edit `lib/stack/eks/index.ts`
 - **Environment variables**: Configure `ENV_NAME`, `PROJECT_NAME`, `AWS_ACCOUNT`, `AWS_REGION`
-- **Wait times**: CDK maximum timeout 15 min, service initialization 20+ min
+- **Wait times**: CDK deploy 15-20 min, service initialization 20+ min
 - **Optimized outputs**: Removed duplicates, added useful commands
 
 ## 🛠️ Available Scripts
 
 | Command | Description | Estimated Time |
 |---------|-------------|----------------|
-| `npm run deploy` | Deploy complete EKS cluster | 5-50 min (depends on installDevtron) |
+| `npm run deploy` | Deploy complete EKS cluster | 15-70 min (cluster only: 15-20 min, measured: ~17.9 min) |
 | `npm run destroy` | Remove EKS cluster | 5-10 min |
 | `npm run connect` | Show detailed connection instructions | Instantaneous |
 | `npm run connect-cluster` | Automatically connect to cluster | 1-2 min |
@@ -441,7 +439,7 @@ kubernetesVersion: eksv2.KubernetesVersion.V1_30, // Extended support
 | **Kube Proxy** | ✅ Automatic | Network proxy for services |
 | **EBS CSI Driver** | ✅ Automatic | Persistent storage with EBS |
 
-Your EKS cluster will be ready in less than 15 minutes! 🎉
+Your EKS cluster will be ready in 15-20 minutes! 🎉
 
 ## 📋 Next Steps After Deploy
 
