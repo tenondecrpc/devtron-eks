@@ -59,7 +59,7 @@ npm install -g aws-cdk@latest
 ### ⚡ One-Command Deployment
 
 ```bash
-npm run deploy
+cdk deploy --require-approval never
 ```
 
 > **⏱️ Timing clarification:**
@@ -135,10 +135,10 @@ npm run deploy
 **After CDK deployment (EKS cluster ready):**
 
 ```bash
-npm run connect-cluster
-npm run status
-npm run nodes
-npm run pods
+aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster
+kubectl cluster-info && kubectl get nodes
+kubectl get nodes --label-columns=eks.amazonaws.com/nodegroup
+kubectl get pods -A
 ```
 
 **⏱️ Verification checklist:**
@@ -155,15 +155,15 @@ npm run pods
 - Ready for Devtron installation
 - Follow [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md) for Devtron deployment
 
-> ⚠️ **Important**: Before running `npm run deploy`, make sure you have configured the environment variables. See the **"Configure Environment Variables"** section below.
+> ⚠️ **Important**: Before running `cdk deploy --require-approval never`, make sure you have configured the environment variables. See the **"Configure Environment Variables"** section below.
 
 ### 🔄 Step-by-Step Option (Manual)
 
 ### 1. Configure AWS Credentials
 ```bash
-aws configure --profile AWS_PROFILE
-aws configure sso --profile AWS_PROFILE
-aws sso login --profile AWS_PROFILE
+aws configure --profile my-profile
+aws configure sso --profile my-profile
+aws sso login --profile my-profile
 ```
 
 > 📝 **Note**: Replace `AWS_PROFILE` with your individual AWS profile name (e.g., `my-profile`, `dev-profile`, etc.)
@@ -171,8 +171,8 @@ aws sso login --profile AWS_PROFILE
 ### 2. Prepare CDK Project
 ```bash
 npm install
-npx cdk bootstrap --profile AWS_PROFILE
-npm run build
+npx cdk bootstrap
+tsc
 ```
 
 ### 3. Configure Environment Variables
@@ -207,12 +207,12 @@ echo "=============================="
 
 ### 4. Deploy EKS Cluster
 ```bash
-npx cdk deploy --require-approval never --profile AWS_PROFILE
+npx cdk deploy --require-approval never
 ```
 
 ### 5. Configure kubectl
 ```bash
-aws eks update-kubeconfig --region us-east-1 --name your-project-name-dev-cluster --profile AWS_PROFILE
+aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster
 kubectl cluster-info
 kubectl get nodes
 ```
@@ -226,18 +226,18 @@ kubectl get nodes --label-columns=eks.amazonaws.com/nodegroup
 
 ### 7. Next Steps
 ```bash
-# After having the cluster ready:
-# 1. Install kubectl and Helm by following [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md)
-# 2. Install Devtron by following [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
-# 3. Start deploying your applications!
+After having the cluster ready:
+1. Install kubectl and Helm by following [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md)
+2. Install Devtron by following [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
+3. Start deploying your applications!
 ```
 
 ## 🔧 Common Troubleshooting
 
 ### Problem: "Cannot connect to cluster"
 ```bash
-aws sts get-caller-identity --profile AWS_PROFILE
-aws eks update-kubeconfig --region us-east-1 --name your-project-name-dev-cluster --profile AWS_PROFILE
+aws sts get-caller-identity
+aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster
 kubectl cluster-info
 ```
 
@@ -283,7 +283,7 @@ kubectl top pods --all-namespaces
 
 ### Complete cleanup:
 ```bash
-npx cdk destroy --profile AWS_PROFILE
+npx cdk destroy 
 ```
 
 ## 📚 More Information
@@ -296,10 +296,10 @@ npx cdk destroy --profile AWS_PROFILE
 
 ## 🎯 Tips
 
-- **First time**: Use the direct deployment workflow with `npm run deploy`
+- **First time**: Use the direct deployment workflow with `cdk deploy --require-approval never`
 - **EKS Cluster**: Ready in 15-20 minutes
 - **Devtron Installation**: Additional 20-50 minutes (follow INSTALL_DEVTRON.md)
-- **Monitoring**: Use `npm run progress` to see real-time status
+- **Monitoring**: Use `kubectl get pods -n devtroncd && kubectl get installers installer-devtron -n devtroncd` for real-time status
 - **Production**: Increase nodes and configure auto-scaling according to needs
 - **Development**: Cluster ready for applications immediately
 - **Wait times**:
@@ -311,30 +311,30 @@ npx cdk destroy --profile AWS_PROFILE
 
 #### **After EKS Deploy:**
 ```bash
-npm run connect-cluster    # Connect kubectl
-npm run status            # View cluster status
-npm run nodes             # Check node group
-npm run pods              # List all pods
+aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster
+kubectl cluster-info && kubectl get nodes
+kubectl get nodes --label-columns=eks.amazonaws.com/nodegroup
+kubectl get pods -A
 ```
 
 #### **After Devtron Installation:**
 ```bash
-npm run devtron-status    # Get Devtron URL and password
-npm run progress          # View Devtron installation progress
-watch -n 300 "kubectl -n devtroncd get installers installer-devtron -o jsonpath='{.status.sync.status}'"  # Monitor Devtron
+kubectl get svc -n devtroncd devtron-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
+watch -n 300 "kubectl -n devtroncd get installers installer-devtron -o jsonpath='{.status.sync.status}'"
 ```
 
 #### **Monitoring Commands:**
-- **Deploy**: `npm run deploy` (deploys EKS cluster)
-- **Connect**: `npm run connect-cluster` (automatically configures kubectl)
-- **Connect help**: `npm run connect` (shows connection instructions)
-- **Verify**: `npm run status` (shows cluster status)
-- **Pods**: `npm run pods` (lists all pods)
-- **Services**: `npm run services` (lists all services)
-- **Nodes**: `npm run nodes` (node group information)
-- **Events**: `npm run events` (recent cluster events)
-- **Logs**: `npm run logs` (view pod logs)
-- **Destroy**: `npm run destroy` (removes entire cluster)
+- **Deploy**: `cdk deploy --require-approval never` (deploys EKS cluster)
+- **Connect**: `aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster` (connects kubectl)
+- **Connect help**: `aws eks update-kubeconfig --help` (connection instructions)
+- **Verify**: `kubectl cluster-info && kubectl get nodes` (shows cluster status)
+- **Pods**: `kubectl get pods -A` (lists all pods)
+- **Services**: `kubectl get svc -A` (lists all services)
+- **Nodes**: `kubectl get nodes --label-columns=eks.amazonaws.com/nodegroup` (node group information)
+- **Events**: `kubectl get events --sort-by=.metadata.creationTimestamp` (recent cluster events)
+- **Logs**: `kubectl logs <pod-name>` (view pod logs)
+- **Destroy**: `cdk destroy` (removes entire cluster)
 
 ### ⚙️ Advanced Configuration
 - **Customize cluster**: Edit `lib/stack/eks/index.ts`
@@ -346,30 +346,30 @@ watch -n 300 "kubectl -n devtroncd get installers installer-devtron -o jsonpath=
 
 | Command | Description | Estimated Time |
 |---------|-------------|----------------|
-| `npm run deploy` | Deploy complete EKS cluster | 15-70 min (cluster only: 15-20 min, measured: ~17.9 min) |
-| `npm run destroy` | Remove EKS cluster | 5-10 min |
-| `npm run connect` | Show detailed connection instructions | Instantaneous |
-| `npm run connect-cluster` | Automatically connect to cluster | 1-2 min |
-| `npm run status` | Check cluster status | Instantaneous |
-| `npm run progress` | Complete status with wait times | Instantaneous |
-| `npm run time-estimates` | Show installation time estimates | Instantaneous |
-| `npm run cost-analysis` | Cost analysis and instances | Instantaneous |
-| `npm run devtron-status` | Devtron URL and password | Instantaneous |
-| `npm run pods` | List all pods | Instantaneous |
-| `npm run services` | List all services | Instantaneous |
-| `npm run nodes` | Node group information | Instantaneous |
-| `npm run events` | Recent cluster events | Instantaneous |
-| `npm run logs <pod>` | View logs of specific pod | Instantaneous |
-| `npm run fix-devtron-service` | Fix Devtron service selector and LoadBalancer | 3-7 min |
-| `npm run verify-lb` | Verify LoadBalancer status | Instantaneous |
+| `cdk deploy --require-approval never` | Deploy complete EKS cluster | 15-70 min (cluster only: 15-20 min, measured: ~17.9 min) |
+| `cdk destroy` | Remove EKS cluster | 5-10 min |
+| `aws eks update-kubeconfig --help` | Show connection instructions | Instantaneous |
+| `aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster` | Connect to cluster | 1-2 min |
+| `kubectl cluster-info && kubectl get nodes` | Check cluster status | Instantaneous |
+| `kubectl get pods -n devtroncd && kubectl get installers installer-devtron -n devtroncd` | Complete status with wait times | Instantaneous |
+| `echo "CDK: 15-20min, Devtron: 20-50min"` | Show installation time estimates | Instantaneous |
+| `kubectl top nodes && echo "EKS: ~$70/month + nodes"` | Cost analysis and instances | Instantaneous |
+| `kubectl get svc -n devtroncd devtron-service && kubectl get secret devtron-secret -n devtroncd` | Devtron URL and password | Instantaneous |
+| `kubectl get pods -A` | List all pods | Instantaneous |
+| `kubectl get svc -A` | List all services | Instantaneous |
+| `kubectl get nodes --label-columns=eks.amazonaws.com/nodegroup` | Node group information | Instantaneous |
+| `kubectl get events --sort-by=.metadata.creationTimestamp` | Recent cluster events | Instantaneous |
+| `kubectl logs <pod-name>` | View logs of specific pod | Instantaneous |
+| `kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'` | Fix Devtron service selector and LoadBalancer | 3-7 min |
+| `kubectl get svc -n devtroncd devtron-service` | Verify LoadBalancer status | Instantaneous |
 
 ### Interactive Commands:
 | Command | Usage |
 |---------|-------|
-| `npm run logs <pod-name>` | View logs of specific pod |
+| `kubectl logs <pod-name> -f` | View real-time logs of specific pod |
 | `kubectl describe <resource>` | Describe resources (use kubectl directly) |
 | `kubectl exec -it <pod>` | Execute commands in a pod |
-| `kubectl port-forward <svc>` | Port forwarding of services |
+| `kubectl port-forward svc/devtron-service -n devtroncd 8080:80` | Port forwarding for Devtron |
 | `kubectl apply -f <file>` | Apply YAML manifests |
 | `kubectl delete <resource>` | Delete resources |
 
@@ -379,22 +379,22 @@ watch -n 300 "kubectl -n devtroncd get installers installer-devtron -o jsonpath=
 
 1. **View connection instructions:**
    ```bash
-   npm run connect
+   aws eks update-kubeconfig --help
    ```
 
 2. **Connect automatically:**
    ```bash
-   npm run connect-cluster
+   aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster
    ```
 
 3. **Verify connection:**
    ```bash
-   npm run status
+   kubectl cluster-info && kubectl get nodes
    ```
 
 **If the cluster has a different name, connect manually:**
 ```bash
-aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile AWS_PROFILE
+aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster
 ```
 
 ## 🔄 Kubernetes Versions
@@ -484,10 +484,10 @@ Once you have your EKS cluster deployed and running, follow these steps to compl
 
 **Connect to your cluster and verify everything is working:**
 ```bash
-npm run connect-cluster
-npm run status
+aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster
+kubectl cluster-info && kubectl get nodes
 
-npm run pods
+kubectl get pods -A
 ```
 
 ### 4. 🎯 Start Using Devtron
@@ -511,7 +511,7 @@ Follow these guides in order to have a complete development environment with Kub
 
 ### 📋 Essential Variables for CDK Deploy
 
-**Before running `npm run deploy`, configure these variables:**
+**Before running `cdk deploy --require-approval never`, configure these variables:**
 
 ```bash
 export ENV_NAME=dev
