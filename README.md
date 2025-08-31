@@ -85,56 +85,85 @@ npm run deploy
 - Essential add-ons installed and configured
 - Ready for application deployment
 
-### ⚠️ **Why don't we wait automatically?**
+### ⚠️ **Why is Devtron installation separate?**
 
-**CDK has technical limitations that prevent including complete waiting:**
+**A comprehensive explanation of the technical challenges and architectural decisions:**
 
-#### ❌ **Timeout Issues:**
-- **Helm timeout**: CDK waits maximum 15 minutes per Helm operation
-- **Cluster stabilization**: Kubernetes can take 20+ minutes to stabilize
-- **LoadBalancer provisioning**: AWS takes 2-5 minutes to create ALB
+#### ❌ **CDK Technical Limitations:**
+- **Helm Timeout Constraints**: CDK has a maximum 15-minute timeout per Helm operation. Devtron's complex multi-stage installation (operator deployment, CRDs, service accounts, RBAC, PostgreSQL, etc.) frequently exceeds this limit
+- **State Management Complexity**: CDK assumes resources are immediately ready after creation. Devtron's asynchronous installation process (Downloaded → Applied states) doesn't fit this model
+- **Dependency Chain Issues**: Devtron requires sequential operations (operator → CRDs → PostgreSQL → services) that CDK's declarative approach struggles to orchestrate reliably
+- **Rollback Complexity**: When Devtron installation fails mid-process, CDK's rollback mechanism becomes unpredictable with partially deployed resources
 
-#### ❌ **CDK Architecture:**
-- **Stack dependencies**: CDK doesn't handle complex asynchronous dependencies well
-- **Rollback issues**: If initialization fails, rollback is problematic
-- **State management**: CDK assumes resources are ready immediately
+#### ❌ **Devtron Installation Complexity:**
+- **Multi-Stage Process**: Devtron installation involves 15+ sequential steps including custom resource definitions, database initialization, service mesh configuration, and ingress setup
+- **Resource Dependencies**: Requires PostgreSQL, Redis, NATS, and multiple microservices to be fully operational before dashboard access
+- **Network Configuration**: LoadBalancer provisioning and service mesh setup can take 5-15 minutes depending on AWS region and capacity
+- **Version Compatibility**: Devtron versions may have specific Kubernetes version requirements that need validation before installation
 
-#### ✅ **Deploy Strategy:**
-- **CDK Deploy**: Creates complete EKS infrastructure (15-20 min)
-- **Separate initialization**: Devtron is installed but doesn't wait for completion
-- **Manual monitoring**: User verifies progress with npm commands
-- **Flexibility**: User decides when to verify vs wait automatically
+#### ❌ **Historical Problems Encountered:**
+- **Timeout Failures**: Multiple deployments failed at 15-minute mark during PostgreSQL initialization or CRD propagation
+- **Inconsistent States**: Partial installations left clusters in unusable states requiring manual cleanup
+- **Resource Conflicts**: CDK-managed resources conflicted with Devtron's Helm-managed resources
+- **Debugging Difficulty**: Combined stack failures made it hard to isolate infrastructure vs application issues
+- **Update Complexity**: Devtron updates required coordinated CDK and Helm changes
+- **Cost Inefficiency**: Failed deployments wasted AWS resources and increased costs
 
-**Result:** Reliable deploy vs deploy that might fail due to timeouts. 🚀
+#### ❌ **Operational Challenges:**
+- **Monitoring Gaps**: CDK doesn't provide visibility into Devtron's internal installation progress
+- **Error Recovery**: Failed Devtron installations required manual intervention and cluster recreation
+- **Version Pinning**: CDK's strict versioning made Devtron updates challenging
+- **Security Considerations**: Devtron's service accounts and RBAC setup needed careful sequencing
+
+#### ✅ **Architectural Benefits of Separation:**
+
+**Phase 1 - Infrastructure Foundation:**
+- **Predictable Deployment**: EKS cluster + add-ons deploy consistently in 15-20 minutes
+- **Resource Optimization**: Infrastructure components (VPC, subnets, node groups) are stable and reusable
+- **Error Isolation**: Infrastructure issues don't affect application deployment
+- **Cost Control**: Failed infrastructure deployments are quick to identify and fix
+- **Reusability**: Same EKS cluster can host different applications
+
+**Phase 2 - Application Installation:**
+- **Flexible Timing**: Install Devtron when infrastructure is stable and verified
+- **Version Control**: Update Devtron independently of infrastructure
+- **Debugging Clarity**: Clear separation between infrastructure and application issues
+- **Resource Management**: Application-specific resources managed separately
+- **Operational Control**: Pause/resume installation at any point
+
+#### ✅ **Technical Advantages:**
+- **Helm Native**: Devtron uses its official Helm charts with proper dependency management
+- **Progress Monitoring**: Real-time visibility into installation states via kubectl
+- **Error Recovery**: Failed installations can be retried without recreating infrastructure
+- **Version Flexibility**: Update Devtron without touching CDK infrastructure
+- **Cost Optimization**: No wasted resources on failed combined deployments
+
+**Result:** Reliable, maintainable deployment process with clear separation of concerns and predictable outcomes. 🚀
 
 ### 📊 **How to Monitor Progress After Deploy**
 
-**After running `npm run deploy` with `installDevtron: true`:**
+**After CDK deployment (EKS cluster ready):**
 
 ```bash
 npm run connect-cluster
-watch -n 300 "kubectl -n devtroncd get installers installer-devtron -o jsonpath='{.status.sync.status}'"
-npm run progress
-npm run devtron-status
+npm run status
+npm run nodes
+npm run pods
 ```
-
-**Devtron States:**
-- `Downloaded` → Installing (wait 10-15 min)
-- `Applied` → ✅ Ready to use
-- `OutOfSync` → ❌ Error (check logs)
 
 **⏱️ Verification checklist:**
 - [ ] CDK deploy completed (15-20 min)
 - [ ] EKS cluster operational
-- [ ] Devtron installed (status: Applied)
-- [ ] LoadBalancer accessible
-- [ ] Dashboard responds correctly
+- [ ] Essential add-ons installed (VPC CNI, CoreDNS, kube-proxy, EBS CSI)
+- [ ] Node group auto-scaling working
+- [ ] kubectl connection established
 
-#### 🎯 **If `installDevtron: false` (EKS cluster only):**
+#### 🎯 **Next Steps: Install Devtron**
 
-**⏱️ Time: 15-20 minutes**
-- Deploys complete EKS cluster with all add-ons
-- You must manually follow [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)
+**After EKS cluster is ready (15-20 minutes):**
+- EKS cluster with all essential add-ons deployed
+- Ready for Devtron installation
+- Follow [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md) for Devtron deployment
 
 > ⚠️ **Important**: Before running `npm run deploy`, make sure you have configured the environment variables. See the **"Configure Environment Variables"** section below.
 
@@ -276,8 +305,8 @@ npx cdk destroy --profile AWS_PROFILE
 ## 🎯 Tips
 
 - **First time**: Use the direct deployment workflow with `npm run deploy`
-- **With installDevtron=true**: Wait 35-70 minutes until dashboard is ready
-- **With installDevtron=false**: Follow [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md) after deploy
+- **EKS Cluster**: Ready in 15-20 minutes
+- **Devtron Installation**: Additional 20-50 minutes (follow INSTALL_DEVTRON.md)
 - **Monitoring**: Use `npm run progress` to see real-time status
 - **Production**: Increase nodes and configure auto-scaling according to needs
 - **Development**: Cluster ready for applications immediately
@@ -288,19 +317,19 @@ npx cdk destroy --profile AWS_PROFILE
 
 ### ⚡ Quick Commands by Scenario
 
-#### **After Deploy with Devtron:**
-```bash
-npm run connect-cluster    # Connect kubectl
-npm run progress          # View complete progress
-watch -n 300 "kubectl -n devtroncd get installers installer-devtron -o jsonpath='{.status.sync.status}'"  # Automatic monitoring
-npm run devtron-status    # Final URL and password
-```
-
-#### **After Deploy without Devtron:**
+#### **After EKS Deploy:**
 ```bash
 npm run connect-cluster    # Connect kubectl
 npm run status            # View cluster status
-# Then follow INSTALL_DEVTRON.md
+npm run nodes             # Check node group
+npm run pods              # List all pods
+```
+
+#### **After Devtron Installation:**
+```bash
+npm run devtron-status    # Get Devtron URL and password
+npm run progress          # View Devtron installation progress
+watch -n 300 "kubectl -n devtroncd get installers installer-devtron -o jsonpath='{.status.sync.status}'"  # Monitor Devtron
 ```
 
 #### **Monitoring Commands:**

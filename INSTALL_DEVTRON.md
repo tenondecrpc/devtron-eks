@@ -3,6 +3,8 @@
 Manual installation guide for Devtron with CI/CD on an EKS cluster.
 
 > **Note**: Devtron installation is now a manual process. The CDK deployment creates only the EKS cluster infrastructure.
+>
+> **Why separate?** This approach avoids CDK timeout limitations (15min max per Helm operation) and complex dependency management. Devtron's multi-stage installation (operator → CRDs → PostgreSQL → services) requires careful sequencing that CDK struggles to handle reliably. The separation ensures predictable deployments and easier troubleshooting. See [README.md](README.md#why-is-devtron-installation-separate) for detailed technical explanation.
 
 ## Prerequisites
 
@@ -11,14 +13,15 @@ Before installing Devtron, ensure you have:
 1. **EKS Cluster**: Deployed via CDK (see README.md for deployment instructions)
 2. **Cluster Connection**: Run `npm run connect-cluster` to connect to your EKS cluster
 3. **kubectl**: Configured and connected to your cluster
-4. **Helm**: Version 3.x installed
+4. **Helm**: Version 3.8+ installed
 
 ## Essential Information
 
-- **Version**: Devtron with CI/CD module
+- **Version**: Latest stable Devtron with CI/CD module
 - **Namespace**: `devtroncd`
-- **Total time**: ~30-45 minutes
+- **Total time**: ~20-50 minutes (varies by AWS region and capacity)
 - **Documentation**: [https://docs.devtron.ai/install/install-devtron-with-cicd](https://docs.devtron.ai/install/install-devtron-with-cicd)
+- **Helm Version Required**: 3.8+
 
 ## Step 1: Connect to EKS Cluster
 
@@ -32,9 +35,14 @@ npm run status
 ## Step 2: Install Devtron
 
 ```bash
+# Verify Helm version (should be 3.8+)
+helm version --short
+
+# Add Devtron Helm repository
 helm repo add devtron https://helm.devtron.ai
 helm repo update devtron
 
+# Install Devtron with CI/CD module
 helm install devtron devtron/devtron-operator \
   --create-namespace \
   --namespace devtroncd \
@@ -65,15 +73,20 @@ kubectl get svc -n devtroncd
 
 ## Step 4: Configure Access and Get Credentials
 
+Once Devtron shows `Applied` status, configure access:
+
 ```bash
+# Get the LoadBalancer hostname (for external access)
 kubectl get svc -n devtroncd devtron-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
 
+# Get admin password
 kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
 ```
 
 **Credentials:**
 - **Username:** `admin`
-- **Password:** [obtained from the command above]
+- **Password:** [output from the command above]
+- **URL:** `http://<loadbalancer-hostname>` (external) or `http://localhost:8080` (with port forwarding)
 
 ### ⚠️ Important: Fix Devtron Service Configuration
 
@@ -108,12 +121,49 @@ kubectl port-forward svc/devtron-service -n devtroncd 8080:80
 
 ## Basic Troubleshooting
 
-- **Slow installation:** Wait 15-20 minutes, it's normal
-- **Not accessible:** Run `npm run fix-devtron-service` to fix service configuration
+### Common Issues and Solutions:
+
+- **Slow installation:** Wait 15-20 minutes, it's normal for PostgreSQL initialization and service mesh setup
+- **Stuck in 'Downloaded' state:** Check pod status with `kubectl get pods -n devtroncd -w`
+- **Not accessible:** Run `npm run fix-devtron-service` to fix service selector configuration
 - **Port forwarding not working:** Ensure `kubectl port-forward` is running and try different local ports
-- **Service selector issue:** Run `npm run fix-devtron-service` to fix pod selector
-- **Error logs:** `kubectl logs -f -l app=inception -n devtroncd`
-- **Check service configuration:** `kubectl describe svc devtron-service -n devtroncd`
+- **Service selector issue:** Run `npm run fix-devtron-service` to fix pod selector mismatch
+
+### Debug Commands:
+
+```bash
+# Check all Devtron resources
+kubectl get all -n devtroncd
+
+# View detailed pod information
+kubectl describe pods -n devtroncd
+
+# Check Devtron operator logs
+kubectl logs -f -l app=devtron -n devtroncd
+
+# Check PostgreSQL pod logs (if database issues)
+kubectl logs -f -l app=postgresql -n devtroncd
+
+# Verify service endpoints
+kubectl describe svc devtron-service -n devtroncd
+
+# Check ingress/load balancer status
+kubectl get ingress -n devtroncd
+```
+
+### Quick Health Check:
+
+```bash
+# Run the npm status script
+npm run status
+
+# Get Devtron installation status
+npm run devtron-status
+
+# Check cluster resources
+kubectl top nodes
+kubectl top pods -n devtroncd
+```
 
 ## Step 5: Access Devtron Dashboard
 
@@ -185,3 +235,20 @@ If you cannot access Devtron:
 - 📖 [Complete Devtron Documentation](https://docs.devtron.ai/)
 - 🏠 [README.md](README.md) - Project start and configuration
 - 🔧 [INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md) - To install kubectl/Helm
+
+## Version Compatibility
+
+- **Kubernetes**: Compatible with EKS 1.30+ (tested with 1.32)
+- **Helm**: Requires Helm 3.8+
+- **Devtron**: Latest stable version (automatically pulled from Helm repo)
+- **AWS Region**: All regions supported, but LoadBalancer provisioning may vary by region capacity
+
+> **Note**: This guide is optimized for EKS 1.32 (current project default). Devtron generally supports Kubernetes versions 1.24+, but some features may require newer versions.
+
+## Support
+
+If you encounter issues:
+1. Check the troubleshooting section above
+2. Verify your EKS cluster is healthy with `npm run status`
+3. Review Devtron operator logs: `kubectl logs -f -l app=devtron -n devtroncd`
+4. Check the [Devtron community forums](https://github.com/devtron-labs/devtron/discussions) for similar issues
