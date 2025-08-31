@@ -110,6 +110,8 @@ kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWOR
 - **Password:** [output from the command above]
 - **URL:** `http://localhost:8080` (with port forwarding)
 
+> **🎯 IMPORTANT!** At this point, you should already have full access to the Devtron dashboard. Only continue reading this document if you encounter any issues or need additional information.
+
 
 
 ## 🔧 **Alternative: Backup Installation Method**
@@ -198,6 +200,8 @@ kubectl port-forward svc/devtron-service -n devtroncd 8080:80
 
 **Note:** Keep this command running in a separate terminal window. The connection will remain active as long as the command is running.
 
+> **💡 Tip**: Run this command in a separate terminal window and keep it running while you access Devtron.
+
 ### Access Devtron
 
 **Open your browser and go to:**
@@ -207,9 +211,11 @@ http://localhost:8080
 
 ### Login Information
 
-- **URL**: `http://localhost:8080`
-- **Username**: `admin`
-- **Password**: [obtained from the command above]
+| Field | Value |
+|-------|-------|
+| **URL** | `http://localhost:8080` |
+| **Username** | `admin` |
+| **Password** | [obtained from the command above] |
 
 ### Port Forwarding Notes
 
