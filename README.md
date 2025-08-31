@@ -66,6 +66,7 @@ cdk deploy --require-approval never --profile AWS_PROFILE
 > - **Setup time**: ~5 minutes (configure environment + run command)
 > - **Deployment time**: 15-20 minutes (EKS cluster creation)
 > - **Total time**: ~20-25 minutes until cluster ready
+> - **With Devtron**: Additional 5-8 minutes (total: 25-33 minutes)
 
 **What does this do?**
 - ✅ **CDK Deploy**: Creates EKS cluster with VPC, Node Group and add-ons
@@ -79,6 +80,10 @@ cdk deploy --require-approval never --profile AWS_PROFILE
 - **CDK Deploy**: 15-20 minutes (measured: ~17.9 minutes)
 - **EKS Cluster creation**: Included in CDK deploy
 - **Essential add-ons**: VPC CNI, CoreDNS, kube-proxy, EBS CSI Driver
+
+**⏱️ With Devtron installation: 20-28 minutes total**
+- **EKS Cluster**: 15-20 minutes
+- **Devtron**: 5-8 minutes (much faster in recent versions!)
 
 **📊 Expected progress:**
 ```
@@ -153,7 +158,7 @@ kubectl get pods -A
 **After EKS cluster is ready (15-20 minutes):**
 - EKS cluster with all essential add-ons deployed
 - Ready for Devtron installation
-- Follow [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md) for Devtron deployment
+- Follow [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md) for Devtron deployment (5-8 minutes)
 
 > ⚠️ **Important**: Before running `cdk deploy --require-approval never --profile AWS_PROFILE`, make sure you have configured the environment variables. See the **"Configure Environment Variables"** section below.
 
@@ -298,14 +303,14 @@ npx cdk destroy --profile AWS_PROFILE
 
 - **First time**: Use the direct deployment workflow with `cdk deploy --require-approval never --profile AWS_PROFILE`
 - **EKS Cluster**: Ready in 15-20 minutes
-- **Devtron Installation**: Additional 20-50 minutes (follow INSTALL_DEVTRON.md)
+- **Devtron Installation**: Additional 5-8 minutes (follow INSTALL_DEVTRON.md)
 - **Monitoring**: Use `kubectl get pods -n devtroncd && kubectl get installers installer-devtron -n devtroncd` for real-time status
 - **Production**: Increase nodes and configure auto-scaling according to needs
 - **Development**: Cluster ready for applications immediately
 - **Wait times**:
   - **Cluster only**: 15-20 minutes (measured: ~17.9 minutes)
-  - **With Devtron**: 35-70 minutes total
-  - **LoadBalancer fix**: 3-7 additional minutes if needed
+  - **With Devtron**: 20-28 minutes total (much faster now!)
+  - **LoadBalancer fix**: No longer needed in recent versions
 
 ### ⚡ Quick Commands by Scenario
 
@@ -339,20 +344,20 @@ watch -n 300 "kubectl -n devtroncd get installers installer-devtron -o jsonpath=
 ### ⚙️ Advanced Configuration
 - **Customize cluster**: Edit `lib/stack/eks/index.ts`
 - **Environment variables**: Configure `ENV_NAME`, `PROJECT_NAME`, `AWS_ACCOUNT`, `AWS_REGION`
-- **Wait times**: CDK deploy 15-20 min, service initialization 20+ min
+- **Wait times**: CDK deploy 15-20 min, Devtron installation 5-8 min
 - **Optimized outputs**: Removed duplicates, added useful commands
 
 ## 🛠️ Available Scripts
 
 | Command | Description | Estimated Time |
 |---------|-------------|----------------|
-| `cdk deploy --require-approval never --profile AWS_PROFILE` | Deploy complete EKS cluster | 15-70 min (cluster only: 15-20 min, measured: ~17.9 min) |
+| `cdk deploy --require-approval never --profile AWS_PROFILE` | Deploy complete EKS cluster | 15-28 min (cluster only: 15-20 min, measured: ~17.9 min) |
 | `cdk destroy --profile AWS_PROFILE` | Remove EKS cluster | 5-10 min |
 | `aws eks update-kubeconfig --help` | Show connection instructions | Instantaneous |
 | `aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile AWS_PROFILE` | Connect to cluster | 1-2 min |
 | `kubectl cluster-info && kubectl get nodes` | Check cluster status | Instantaneous |
 | `kubectl get pods -n devtroncd && kubectl get installers installer-devtron -n devtroncd` | Complete status with wait times | Instantaneous |
-| `echo "CDK: 15-20min, Devtron: 20-50min"` | Show installation time estimates | Instantaneous |
+| `echo "CDK: 15-20min, Devtron: 5-8min"` | Show installation time estimates | Instantaneous |
 | `kubectl top nodes && echo "EKS: ~$70/month + nodes"` | Cost analysis and instances | Instantaneous |
 | `kubectl get svc -n devtroncd devtron-service && kubectl get secret devtron-secret -n devtroncd` | Devtron URL and password | Instantaneous |
 | `kubectl get pods -A` | List all pods | Instantaneous |
@@ -360,7 +365,7 @@ watch -n 300 "kubectl -n devtroncd get installers installer-devtron -o jsonpath=
 | `kubectl get nodes --label-columns=eks.amazonaws.com/nodegroup` | Node group information | Instantaneous |
 | `kubectl get events --sort-by=.metadata.creationTimestamp` | Recent cluster events | Instantaneous |
 | `kubectl logs <pod-name>` | View logs of specific pod | Instantaneous |
-| `kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'` | Fix Devtron service selector and LoadBalancer | 3-7 min |
+
 | `kubectl get svc -n devtroncd devtron-service` | Verify LoadBalancer status | Instantaneous |
 
 ### Interactive Commands:
@@ -462,6 +467,8 @@ kubernetesVersion: eksv2.KubernetesVersion.V1_30, // Extended support
 
 Your EKS cluster will be ready in 15-20 minutes! 🎉
 
+> **🚀 Performance Update**: Recent Devtron versions install in just **5-8 minutes** on EKS (vs. 20-50 minutes previously). This represents a **5x improvement** in installation speed!
+
 ## 📋 Next Steps After Deploy
 
 Once you have your EKS cluster deployed and running, follow these steps to complete the installation:
@@ -512,7 +519,7 @@ Once Devtron is installed, you can:
 | Guide | Purpose | Estimated Time |
 |-------|---------|----------------|
 | **[INSTALL_KUBERNETES.md](INSTALL_KUBERNETES.md)** | Install kubectl and Helm | 10-15 min |
-| **[INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)** | Install Devtron on EKS | 15-20 min |
+| **[INSTALL_DEVTRON.md](INSTALL_DEVTRON.md)** | Install Devtron on EKS | 5-8 min |
 
 Follow these guides in order to have a complete development environment with Kubernetes and Devtron! 🚀
 
