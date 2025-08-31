@@ -1,6 +1,17 @@
 # Installing Devtron on EKS
 
-Simplified guide to install Devtron with CI/CD on an EKS cluster.
+Manual installation guide for Devtron with CI/CD on an EKS cluster.
+
+> **Note**: Devtron installation is now a manual process. The CDK deployment creates only the EKS cluster infrastructure.
+
+## Prerequisites
+
+Before installing Devtron, ensure you have:
+
+1. **EKS Cluster**: Deployed via CDK (see README.md for deployment instructions)
+2. **Cluster Connection**: Run `npm run connect-cluster` to connect to your EKS cluster
+3. **kubectl**: Configured and connected to your cluster
+4. **Helm**: Version 3.x installed
 
 ## Essential Information
 
@@ -66,11 +77,11 @@ kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWOR
 
 ### ⚠️ Important: Fix Devtron Service Configuration
 
-After Devtron installation, the service needs to be configured correctly for internet access:
+After Devtron installation, the service selector needs to be corrected:
 
 ```bash
-# Fix both the service selector and LoadBalancer annotations
-kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}},"metadata":{"annotations":{"service.beta.kubernetes.io/aws-load-balancer-type":"nlb","service.beta.kubernetes.io/aws-load-balancer-scheme":"internet-facing","service.beta.kubernetes.io/aws-load-balancer-nlb-target-type":"ip"}}}'
+# Fix the service selector to point to the correct pods
+kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'
 ```
 
 **Or use the npm script:**
@@ -78,44 +89,41 @@ kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"select
 npm run fix-devtron-service
 ```
 
-**⏱️ Estimated time: 3-7 minutes** (wait for AWS to recreate the LoadBalancer)
+**⏱️ Estimated time: 1-2 minutes**
 
 **What this fixes:**
 - **Service Selector**: Changes from `app=devtron` to `app=dashboard` (correct pod selector)
-- **LoadBalancer Type**: Configures NLB (Network Load Balancer)
-- **Internet Access**: Enables `internet-facing` scheme
-- **Target Type**: Sets to `ip` for better performance
 
 ## Useful Commands
 
 ```bash
 npm run status                    # Check cluster status
-npm run devtron-status           # Get Devtron URL and admin password
-npm run verify-lb               # Verify LoadBalancer status
-npm run fix-devtron-service     # Fix service selector and LoadBalancer config
+npm run devtron-status           # Get Devtron admin password
+npm run fix-devtron-service     # Fix service selector configuration
 npm run cost-analysis           # Cost analysis
+
+# Port forwarding (run in separate terminal)
+kubectl port-forward svc/devtron-service -n devtroncd 8080:80
 ```
 
 ## Basic Troubleshooting
 
 - **Slow installation:** Wait 15-20 minutes, it's normal
-- **Not accessible:** Run `npm run fix-devtron-service` and wait 3-7 minutes
-- **Service selector issue:** If LoadBalancer shows no endpoints, the service selector needs to be fixed
+- **Not accessible:** Run `npm run fix-devtron-service` to fix service configuration
+- **Port forwarding not working:** Ensure `kubectl port-forward` is running and try different local ports
+- **Service selector issue:** Run `npm run fix-devtron-service` to fix pod selector
 - **Error logs:** `kubectl logs -f -l app=inception -n devtroncd`
 - **Check service configuration:** `kubectl describe svc devtron-service -n devtroncd`
 
 ## Step 5: Access Devtron Dashboard
 
-Once the installation is complete and the LoadBalancer is ready, access Devtron:
+Once Devtron is installed and running, access it using port forwarding:
 
-### Get the Devtron URL
+### Start Port Forwarding
 
 ```bash
-# Option 1: Get the hostname
-kubectl get svc -n devtroncd devtron-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
-
-# Option 2: Get the complete HTTPS URL
-kubectl get svc -n devtroncd devtron-service -o jsonpath='https://{.status.loadBalancer.ingress[0].hostname}'
+# Forward local port 8080 to Devtron service port 80
+kubectl port-forward svc/devtron-service -n devtroncd 8080:80
 ```
 
 ### Get Admin Credentials
@@ -125,32 +133,52 @@ kubectl get svc -n devtroncd devtron-service -o jsonpath='https://{.status.loadB
 kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
 ```
 
+### Access Devtron
+
+**Open your browser and go to:**
+```
+http://localhost:8080
+```
+
 ### Login Information
 
-- **URL**: [obtained from the command above]
+- **URL**: `http://localhost:8080`
 - **Username**: `admin`
 - **Password**: [obtained from the command above]
 
-### Verify LoadBalancer Status
+### Port Forwarding Notes
+
+**Important:** Keep the port forwarding command running in a terminal window. The connection will remain active as long as the command is running.
+
+**To stop port forwarding:** Press `Ctrl+C` in the terminal where it's running.
+
+**⏱️ Access is immediate** - No waiting time required!
+
+### Background Port Forwarding (Optional)
+
+If you want to run port forwarding in the background:
 
 ```bash
-# Check if LoadBalancer is ready
-kubectl get svc -n devtroncd devtron-service
+# Run in background
+kubectl port-forward svc/devtron-service -n devtroncd 8080:80 &
 
-# Expected output should show EXTERNAL-IP (hostname) when ready
+# Check if it's running
+ps aux | grep "kubectl port-forward"
+
+# Stop background process (replace PID with actual process ID)
+kill <PID>
 ```
-
-**⏱️ Estimated time for LoadBalancer**: 3-7 minutes after Devtron installation completes
 
 ### Troubleshooting Access Issues
 
-If you cannot access the URL:
+If you cannot access Devtron:
 
-1. **Wait for LoadBalancer**: The LoadBalancer needs 3-7 minutes to be fully provisioned by AWS
-2. **Check LoadBalancer status**: Ensure the EXTERNAL-IP shows a hostname
-3. **Fix service configuration**: Run `npm run fix-devtron-service` to fix both selector and LoadBalancer settings
-4. **Check service endpoints**: Verify that `kubectl describe svc devtron-service -n devtroncd` shows valid endpoints
-5. **Verify installation**: Run `npm run devtron-status` to check Devtron status
+1. **Check port forwarding**: Ensure the `kubectl port-forward` command is still running
+2. **Try different port**: If 8080 is busy, use another port like `kubectl port-forward svc/devtron-service -n devtroncd 3000:80`
+3. **Verify service status**: Run `kubectl get svc devtron-service -n devtroncd`
+4. **Check pod status**: Run `kubectl get pods -n devtroncd`
+5. **Fix service configuration**: Run `npm run fix-devtron-service` if needed
+6. **Verify installation**: Run `npm run devtron-status` to check Devtron status
 
 ## Resources
 

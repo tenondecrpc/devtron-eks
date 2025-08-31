@@ -2,7 +2,6 @@ import * as cdk from 'aws-cdk-lib';
 import * as eksv2 from '@aws-cdk/aws-eks-v2-alpha';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import { KubectlV32Layer } from '@aws-cdk/lambda-layer-kubectl-v32';
 import { Construct } from 'constructs';
 
 export interface EksConstructProps {
@@ -73,10 +72,7 @@ export class EksConstruct extends Construct {
             'Allow HTTPS traffic from anywhere'
         );
 
-        // Create kubectl layer for Helm chart and manifest management
-        const kubectlLayer = new KubectlV32Layer(this, 'KubectlLayer');
-
-        // Create EKS Cluster with kubectl provider configured
+        // Create EKS Cluster
         this.cluster = new eksv2.Cluster(this, 'EksCluster', {
             clusterName: props.clusterName,
             version: props.kubernetesVersion || eksv2.KubernetesVersion.V1_32,
@@ -86,10 +82,6 @@ export class EksConstruct extends Construct {
                 { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
                 { subnetType: ec2.SubnetType.PUBLIC }
             ],
-            // Configure kubectl provider for Helm charts and manifests
-            kubectlProviderOptions: {
-                kubectlLayer: kubectlLayer,
-            },
         });
 
         // EBS CSI DRIVER PERMISSIONS:
@@ -180,89 +172,17 @@ export class EksConstruct extends Construct {
         // Outputs are handled by EksFactory to avoid duplicates
     }
 
-    /**
-     * Install Devtron with CI/CD module and internet-facing LoadBalancer
-     * ⏱️ Time estimate: 3-8 minutes for Helm install + 10-20 minutes for full initialization
-     */
-    public installDevtron(): eksv2.HelmChart {
-        return new eksv2.HelmChart(this, 'DevtronHelmChart', {
-            cluster: this.cluster,
-            chart: 'devtron-operator',
-            repository: 'https://helm.devtron.ai',
-            namespace: 'devtroncd',
-            createNamespace: true,
-            values: {
-                installer: {
-                    modules: ['cicd']
-                }
-            },
-            // Wait for installation to complete
-            wait: false, // Set to false to avoid timeout issues (installation continues in background)
-        });
-    }
 
-    /**
-     * Fix Devtron service configuration for internet-facing LoadBalancer
-     * This patches the existing Devtron service to ensure proper configuration
-     * ⏱️ Time estimate: 3-7 minutes (AWS LoadBalancer recreation + DNS propagation)
-     */
-    public fixDevtronService(): eksv2.KubernetesManifest {
-        return new eksv2.KubernetesManifest(this, 'DevtronServiceFix', {
-            cluster: this.cluster,
-            manifest: [{
-                apiVersion: 'v1',
-                kind: 'Service',
-                metadata: {
-                    name: 'devtron-service',
-                    namespace: 'devtroncd',
-                    annotations: {
-                        // These annotations will make the LoadBalancer internet-facing
-                        'service.beta.kubernetes.io/aws-load-balancer-type': 'nlb',
-                        'service.beta.kubernetes.io/aws-load-balancer-scheme': 'internet-facing',
-                        'service.beta.kubernetes.io/aws-load-balancer-nlb-target-type': 'ip',
-                        'service.beta.kubernetes.io/aws-load-balancer-subnets': this.getPublicSubnets()
-                            .map(subnet => subnet.subnetId)
-                            .join(',')
-                    }
-                },
-                spec: {
-                    type: 'LoadBalancer',
-                    selector: {
-                        app: 'dashboard'  // Correct selector for Devtron dashboard pods
-                    },
-                    ports: [{
-                        name: 'devtron',
-                        port: 80,
-                        targetPort: 'devtron',
-                        protocol: 'TCP'
-                    }]
-                }
-            }]
-        });
-    }
 
-    /**
-     * Get public subnets for LoadBalancer services
-     */
-    public getPublicSubnets(): ec2.ISubnet[] {
-        return this.vpc.selectSubnets({
-            subnetType: ec2.SubnetType.PUBLIC,
-        }).subnets;
-    }
 
-    /**
-     * Create a public LoadBalancer service configuration
-     */
-    public createPublicLoadBalancerAnnotations(): { [key: string]: string } {
-        return {
-            'service.beta.kubernetes.io/aws-load-balancer-type': 'nlb',
-            'service.beta.kubernetes.io/aws-load-balancer-scheme': 'internet-facing',
-            'service.beta.kubernetes.io/aws-load-balancer-nlb-target-type': 'ip',
-            'service.beta.kubernetes.io/aws-load-balancer-subnets': this.getPublicSubnets()
-                .map(subnet => subnet.subnetId)
-                .join(','),
-        };
-    }
+
+
+
+
+
+
+
+
 
     /**
      * Add a service account with IRSA

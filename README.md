@@ -70,27 +70,22 @@ npm run deploy
 - ✅ **Outputs**: Shows all important commands and endpoints
 - ✅ **Verification**: Confirms everything is working correctly
 
-#### 🎯 **If `installDevtron: true` (Default in dev environment):**
+#### 🎯 **After CDK Deployment:**
 
-**⏱️ Total time until dashboard ready: 20-50 minutes**
+**⏱️ Total time until cluster ready: 5-15 minutes**
 - **CDK Deploy**: 5-15 minutes
-- **Devtron Installation**: 3-8 minutes (Helm)
-- **Complete initialization**: 10-20 minutes (pods, databases, services)
-- **LoadBalancer internet-facing**: 2-5 minutes (AWS recreates ALB)
+- **EKS Cluster creation**: Included in CDK deploy
+- **Essential add-ons**: VPC CNI, CoreDNS, kube-proxy, EBS CSI Driver
 
 **📊 Expected progress:**
 ```
 0:00 - 0:15: CDK Deploy + Cluster creation
-0:15 - 0:25: Devtron Helm install
-0:25 - 0:45: Service initialization
-0:45 - 0:50: Dashboard ready to use
 ```
 
 **✅ At completion you'll have:**
 - Fully operational EKS cluster
-- Devtron installed and configured
-- Dashboard URL available
-- Admin credentials generated
+- Essential add-ons installed and configured
+- Ready for application deployment
 
 ### ⚠️ **Why don't we wait automatically?**
 

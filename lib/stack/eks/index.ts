@@ -8,7 +8,6 @@ import { ParamsConfig } from "../shared/util/env-config";
 export interface EksFactoryProps {
     params: ParamsConfig;
     vpc?: ec2.IVpc;
-    installDevtron?: boolean;
 }
 
 /**
@@ -21,7 +20,7 @@ export class EksFactory extends Construct {
     constructor(scope: Construct, id: string, props: EksFactoryProps) {
         super(scope, id);
 
-        const { params, vpc, installDevtron } = props;
+        const { params, vpc } = props;
         const { envName, projectName } = params;
         const isProd = envName === "prod";
 
@@ -47,11 +46,6 @@ export class EksFactory extends Construct {
 
         // Install essential EKS add-ons
         this.cluster.installEksAddons();
-
-        // Install Devtron if requested
-        if (installDevtron) {
-            this.installDevtron();
-        }
 
         // Create outputs for easy access
         this.createOutputs();
@@ -93,40 +87,6 @@ export class EksFactory extends Construct {
         });
     }
 
-    /**
-     * Install Devtron with internet-facing LoadBalancer
-     */
-    private installDevtron(): void {
-        // Install Devtron via Helm
-        const devtronChart = this.cluster.installDevtron();
 
-        // Fix existing Devtron service configuration for internet-facing access
-        const devtronServiceFix = this.cluster.fixDevtronService();
-
-        // Add dependency to ensure service fix is applied after Devtron is installed
-        devtronServiceFix.node.addDependency(devtronChart);
-
-        // Add outputs for Devtron
-        new CfnOutput(this, 'DevtronUrlCommand', {
-            value: `kubectl get svc devtron-service -n devtroncd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'`,
-            description: 'Command to get Devtron dashboard URL',
-        });
-
-        // Output for direct URL access (will be available after LoadBalancer is ready)
-        new CfnOutput(this, 'DevtronDashboardAccess', {
-            value: 'After LoadBalancer is ready: kubectl get svc devtron-service -n devtroncd -o jsonpath="https://{.status.loadBalancer.ingress[0].hostname}"',
-            description: 'Devtron dashboard access URL (wait for LoadBalancer to be ready - ~3-7 minutes)',
-        });
-
-        new CfnOutput(this, 'DevtronAdminPassword', {
-            value: `kubectl get secret devtron-secret -n devtroncd -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d`,
-            description: 'Devtron admin password',
-        });
-
-        new CfnOutput(this, 'DevtronInstallStatus', {
-            value: `kubectl get installers installer-devtron -n devtroncd -o jsonpath='{.status.sync.status}'`,
-            description: 'Devtron installation status',
-        });
-    }
 
 }

@@ -17,8 +17,7 @@ export class MainStack extends cdk.Stack {
 
     // Create EKS cluster with essential add-ons
     const eksFactory = new EksFactory(this, "EksFactory", {
-      params,
-      installDevtron: true // This can be done manually from INSTALL_DEVTRON.md
+      params
     });
 
     cdk.Tags.of(this).add('Project', projectName);
