@@ -26,7 +26,10 @@ Before installing Devtron, ensure you have:
 ## Step 1: Connect to EKS Cluster
 
 ```bash
+# Connect kubectl to your EKS cluster
 aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile AWS_PROFILE
+
+# Verify cluster connection and status
 kubectl cluster-info && kubectl get nodes
 ```
 
@@ -65,7 +68,10 @@ kubectl -n devtroncd get installers installer-devtron \
 
 **Additional verification:**
 ```bash
+# Check Devtron pods status
 kubectl get pods -n devtroncd
+
+# Check Devtron services status
 kubectl get svc -n devtroncd
 ```
 
@@ -97,11 +103,6 @@ After Devtron installation, the service selector needs to be corrected:
 kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'
 ```
 
-**Or run the command directly:**
-```bash
-kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'
-```
-
 **⏱️ Estimated time: 1-2 minutes**
 
 **What this fixes:**
@@ -110,10 +111,17 @@ kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"select
 ## Useful Commands
 
 ```bash
-kubectl cluster-info && kubectl get nodes                    # Check cluster status
-kubectl get svc -n devtroncd devtron-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' && kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d          # Get Devtron admin password
-kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'    # Fix service selector configuration
-kubectl top nodes && echo "EKS: ~$70/month + nodes"          # Cost analysis
+# Check cluster status
+kubectl cluster-info && kubectl get nodes
+
+# Get Devtron admin password and URL
+kubectl get svc -n devtroncd devtron-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' && kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
+
+# Fix service selector configuration
+kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'
+
+# Cost analysis
+kubectl top nodes && echo "EKS: ~$70/month + nodes"
 
 # Port forwarding (run in separate terminal)
 kubectl port-forward svc/devtron-service -n devtroncd 8080:80
