@@ -54,13 +54,18 @@ choco install awscli
 npm install -g aws-cdk@latest
 ```
 
-## 🚀 Quick Start (5 minutes)
+## 🚀 Quick Start (5 minutes setup)
 
-### ⚡ Ultra-Fast Option (1 command)
+### ⚡ One-Command Deployment
 
 ```bash
 npm run deploy
 ```
+
+> **⏱️ Timing clarification:**
+> - **Setup time**: ~5 minutes (configure environment + run command)
+> - **Deployment time**: 15-20 minutes (EKS cluster creation)
+> - **Total time**: ~20-25 minutes until cluster ready
 
 **What does this do?**
 - ✅ **CDK Deploy**: Creates EKS cluster with VPC, Node Group and add-ons
