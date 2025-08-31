@@ -92,58 +92,43 @@ npm run deploy
 
 ### ⚠️ **Why is Devtron installation separate?**
 
-**A comprehensive explanation of the technical challenges and architectural decisions:**
+**Technical challenges and architectural decisions:**
 
-#### ❌ **CDK Technical Limitations:**
-- **Helm Timeout Constraints**: CDK has a maximum 15-minute timeout per Helm operation. Devtron's complex multi-stage installation (operator deployment, CRDs, service accounts, RBAC, PostgreSQL, etc.) frequently exceeds this limit
-- **State Management Complexity**: CDK assumes resources are immediately ready after creation. Devtron's asynchronous installation process (Downloaded → Applied states) doesn't fit this model
-- **Dependency Chain Issues**: Devtron requires sequential operations (operator → CRDs → PostgreSQL → services) that CDK's declarative approach struggles to orchestrate reliably
-- **Rollback Complexity**: When Devtron installation fails mid-process, CDK's rollback mechanism becomes unpredictable with partially deployed resources
+#### ❌ **CDK Limitations with Complex Applications:**
+- **15-minute timeout constraint**: CDK's Helm operations fail when Devtron's multi-stage installation (15+ steps) exceeds time limits
+- **Asynchronous state management**: CDK expects immediate resource readiness, but Devtron's sequential dependencies (operator → CRDs → PostgreSQL → services) don't fit this model
+- **Rollback unpredictability**: Failed Devtron installations leave partial resources that CDK's rollback can't handle reliably
 
 #### ❌ **Devtron Installation Complexity:**
-- **Multi-Stage Process**: Devtron installation involves 15+ sequential steps including custom resource definitions, database initialization, service mesh configuration, and ingress setup
-- **Resource Dependencies**: Requires PostgreSQL, Redis, NATS, and multiple microservices to be fully operational before dashboard access
-- **Network Configuration**: LoadBalancer provisioning and service mesh setup can take 5-15 minutes depending on AWS region and capacity
-- **Version Compatibility**: Devtron versions may have specific Kubernetes version requirements that need validation before installation
+- **Multi-stage process**: Requires PostgreSQL, Redis, NATS, and microservices to be operational before dashboard access
+- **Network dependencies**: LoadBalancer and service mesh setup take 5-15 minutes depending on AWS capacity
+- **Version compatibility**: Specific Kubernetes version requirements must be validated pre-installation
 
-#### ❌ **Historical Problems Encountered:**
-- **Timeout Failures**: Multiple deployments failed at 15-minute mark during PostgreSQL initialization or CRD propagation
-- **Inconsistent States**: Partial installations left clusters in unusable states requiring manual cleanup
-- **Resource Conflicts**: CDK-managed resources conflicted with Devtron's Helm-managed resources
-- **Debugging Difficulty**: Combined stack failures made it hard to isolate infrastructure vs application issues
-- **Update Complexity**: Devtron updates required coordinated CDK and Helm changes
-- **Cost Inefficiency**: Failed deployments wasted AWS resources and increased costs
+#### ❌ **Historical Issues:**
+- **Timeout failures**: Deployments failed at 15-minute mark during database initialization
+- **Inconsistent states**: Partial installations required manual cleanup and cluster recreation
+- **Resource conflicts**: CDK and Helm-managed resources conflicted, complicating debugging
+- **Update complexity**: Coordinated CDK/Helm changes made Devtron updates challenging
 
-#### ❌ **Operational Challenges:**
-- **Monitoring Gaps**: CDK doesn't provide visibility into Devtron's internal installation progress
-- **Error Recovery**: Failed Devtron installations required manual intervention and cluster recreation
-- **Version Pinning**: CDK's strict versioning made Devtron updates challenging
-- **Security Considerations**: Devtron's service accounts and RBAC setup needed careful sequencing
+#### ✅ **Architectural Benefits:**
 
-#### ✅ **Architectural Benefits of Separation:**
+**Phase 1 - Infrastructure (15-20 min):**
+- Predictable EKS deployment with essential add-ons
+- Stable, reusable infrastructure components
+- Clear error isolation between infra and application
 
-**Phase 1 - Infrastructure Foundation:**
-- **Predictable Deployment**: EKS cluster + add-ons deploy consistently in 15-20 minutes
-- **Resource Optimization**: Infrastructure components (VPC, subnets, node groups) are stable and reusable
-- **Error Isolation**: Infrastructure issues don't affect application deployment
-- **Cost Control**: Failed infrastructure deployments are quick to identify and fix
-- **Reusability**: Same EKS cluster can host different applications
-
-**Phase 2 - Application Installation:**
-- **Flexible Timing**: Install Devtron when infrastructure is stable and verified
-- **Version Control**: Update Devtron independently of infrastructure
-- **Debugging Clarity**: Clear separation between infrastructure and application issues
-- **Resource Management**: Application-specific resources managed separately
-- **Operational Control**: Pause/resume installation at any point
+**Phase 2 - Application (20-50 min):**
+- Install Devtron when infrastructure is verified
+- Update Devtron independently of infrastructure
+- Retry failed installations without recreating cluster
 
 #### ✅ **Technical Advantages:**
-- **Helm Native**: Devtron uses its official Helm charts with proper dependency management
-- **Progress Monitoring**: Real-time visibility into installation states via kubectl
-- **Error Recovery**: Failed installations can be retried without recreating infrastructure
-- **Version Flexibility**: Update Devtron without touching CDK infrastructure
-- **Cost Optimization**: No wasted resources on failed combined deployments
+- **Native Helm support**: Official Devtron charts with proper dependency management
+- **Real-time monitoring**: kubectl visibility into installation progress
+- **Cost optimization**: No wasted resources on failed combined deployments
+- **Operational flexibility**: Pause/resume installations at any point
 
-**Result:** Reliable, maintainable deployment process with clear separation of concerns and predictable outcomes. 🚀
+**Result:** Reliable, maintainable deployment with clear separation of concerns. 🚀
 
 ### 📊 **How to Monitor Progress After Deploy**
 
@@ -180,6 +165,8 @@ aws configure --profile AWS_PROFILE
 aws configure sso --profile AWS_PROFILE
 aws sso login --profile AWS_PROFILE
 ```
+
+> 📝 **Note**: Replace `AWS_PROFILE` with your individual AWS profile name (e.g., `my-profile`, `dev-profile`, etc.)
 
 ### 2. Prepare CDK Project
 ```bash
