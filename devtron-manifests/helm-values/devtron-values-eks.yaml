@@ -1,0 +1,42 @@
+# Optimized configuration for EKS based on successful Minikube export
+# This file contains the specific configurations that work well with EKS clusters
+
+components:
+  devtron:
+    service:
+      type: ClusterIP  # Use ClusterIP instead of NodePort for EKS
+      port: 80
+
+# Storage configuration optimized for EKS
+postgresql:
+  primary:
+    persistence:
+      enabled: true
+      storageClass: "gp2"  # Default EKS storage class
+      size: 20Gi
+
+redis:
+  master:
+    persistence:
+      enabled: true
+      storageClass: "gp2"  # Default EKS storage class
+      size: 8Gi
+
+# Global EKS optimizations
+global:
+  podSecurityPolicy:
+    enabled: false  # PSP deprecated in recent K8s versions
+
+# Additional EKS-specific optimizations
+installer:
+  modules:
+    - cicd  # Install CI/CD module
+
+# Resource limits for EKS (optional, adjust based on your cluster size)
+resources:
+  limits:
+    cpu: "1000m"
+    memory: "2Gi"
+  requests:
+    cpu: "500m"
+    memory: "1Gi"

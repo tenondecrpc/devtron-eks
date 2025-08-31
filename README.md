@@ -480,7 +480,16 @@ Once you have your EKS cluster deployed and running, follow these steps to compl
 - 🎯 **Includes:** Cluster connection, Helm installation, initial configuration
 - ✅ **Result:** Devtron dashboard accessible
 
-### 3. 🔗 Connect and Verify
+### 3. 🔧 Pre-configured Manifests (Backup Method)
+
+**Devtron configurations available as backup if standard installation fails:**
+- 📁 **Location:** `devtron-manifests/` directory within this project
+- 🚀 **Quick apply:** `cd devtron-manifests && ./apply-configs.sh`
+- 📋 **Includes:** CRDs, Service Accounts, Helm values, Nginx configs
+- ⚠️ **Use only if:** Standard Helm installation encounters issues
+- ✅ **Result:** Alternative installation path when primary method fails
+
+### 4. 🔗 Connect and Verify
 
 **Connect to your cluster and verify everything is working:**
 ```bash
@@ -490,7 +499,7 @@ kubectl cluster-info && kubectl get nodes
 kubectl get pods -A
 ```
 
-### 4. 🎯 Start Using Devtron
+### 5. 🎯 Start Using Devtron
 
 Once Devtron is installed, you can:
 - ✅ **Configure CI/CD pipelines**
