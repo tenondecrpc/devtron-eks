@@ -103,14 +103,17 @@ Once Devtron shows `Applied` status, configure access:
 ```bash
 # Get admin password
 kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
+
+# Start port forwarding to access Devtron dashboard
+kubectl port-forward svc/devtron-service -n devtroncd 8080:80
 ```
 
 **Credentials:**
 - **Username:** `admin`
 - **Password:** [output from the command above]
-- **URL:** `http://localhost:8080` (with port forwarding)
+- **URL:** `http://localhost:8080`
 
-> **🎯 IMPORTANT!** At this point, you should already have full access to the Devtron dashboard. Only continue reading this document if you encounter any issues or need additional information.
+> **🎯 IMPORTANT!** Keep the port forwarding command running in a separate terminal window. The connection will remain active as long as the command is running.
 
 
 
@@ -182,48 +185,18 @@ cd devtron-manifests
 
 ## Step 5: Access Devtron Dashboard
 
-Once Devtron is installed and running, access it using port forwarding:
+Once port forwarding is running from Step 4:
 
-### Get Admin Credentials
-
-```bash
-# Get admin password
-kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
-```
-
-### Start Port Forwarding
-
-```bash
-# Forward local port 8080 to Devtron service port 80
-kubectl port-forward svc/devtron-service -n devtroncd 8080:80
-```
-
-**Note:** Keep this command running in a separate terminal window. The connection will remain active as long as the command is running.
-
-> **💡 Tip**: Run this command in a separate terminal window and keep it running while you access Devtron.
-
-### Access Devtron
-
-**Open your browser and go to:**
+**Open your browser and navigate to:**
 ```
 http://localhost:8080
 ```
 
-### Login Information
+**Login with:**
+- **Username:** `admin`
+- **Password:** [obtained from Step 4]
 
-| Field | Value |
-|-------|-------|
-| **URL** | `http://localhost:8080` |
-| **Username** | `admin` |
-| **Password** | [obtained from the command above] |
-
-### Port Forwarding Notes
-
-**Important:** Keep the port forwarding command running in a terminal window. The connection will remain active as long as the command is running.
-
-**To stop port forwarding:** Press `Ctrl+C` in the terminal where it's running.
-
-**⏱️ Access is immediate** - No waiting time required!
+> **💡 Tip**: Keep the port forwarding command from Step 4 running in a separate terminal. Press `Ctrl+C` to stop when finished.
 
 ## Useful Commands
 
