@@ -189,14 +189,14 @@ Once Devtron is installed and running, access it using port forwarding:
 kubectl port-forward svc/devtron-service -n devtroncd 8080:80
 ```
 
+**Note:** Keep this command running in a separate terminal window. The connection will remain active as long as the command is running.
+
 ### Get Admin Credentials
 
 ```bash
 # Get admin password
 kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
 ```
-
-**Note:** Use port forwarding to access Devtron at `http://localhost:8080`
 
 ### Access Devtron
 
@@ -227,11 +227,6 @@ kubectl cluster-info && kubectl get nodes
 
 # Get Devtron admin password
 kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
-
-
-
-# Port forwarding (run in separate terminal)
-kubectl port-forward svc/devtron-service -n devtroncd 8080:80
 
 # Check all Devtron resources
 kubectl get all -n devtroncd
