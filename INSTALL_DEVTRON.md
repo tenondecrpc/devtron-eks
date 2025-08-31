@@ -52,7 +52,7 @@ helm install devtron devtron/devtron-operator \
   --set installer.modules={cicd}
 ```
 
-**⏱️ ⚡ Estimated time: 3-8 minutes**
+**⏱️ ⚡ Estimated time: 1-8 minutes** (can be as fast as 1 minute if components are cached)
 
 ## Step 3: Wait for Complete Installation
 
@@ -62,9 +62,11 @@ kubectl -n devtroncd get installers installer-devtron \
 ```
 
 **States:**
-- `Downloaded` → Waiting (normal, wait 20-45 min)
+- `Downloaded` → Installation in progress (may take 1-45 min depending on cluster state)
 - `Applied` → ✅ Completed
 - `OutOfSync` → ❌ Error (check logs)
+
+> **⚡ Note**: If installation completes in ~1 minute and shows "Applied", Devtron components may already be cached/installed. This is normal and indicates a successful deployment.
 
 **Additional verification:**
 ```bash
@@ -122,10 +124,21 @@ kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"select
 
 **Additional fixes (if needed):**
 
-**Fix service targetPort (if 404 errors persist)**
+**Fix service targetPort (if port-forwarding fails with "does not have a named port")**
 ```bash
 kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"ports":[{"name":"devtron","port":80,"targetPort":8080}]}}'
 ```
+
+> **🔧 Port Forwarding Issue**: If you get "does not have a named port 'devtron'" error, it's because the service uses a named port but the pod only has numeric ports. The patch above fixes this by changing `targetPort: devtron` to `targetPort: 8080`.
+
+**🔧 Static Assets 404 Errors**: If you see 404 errors for JavaScript/CSS files (like `env-config.js`, `@vendor-DjxZIeJD.css`, `index-DdfPrgXS.js`), this is due to nginx path mapping issues. The dashboard HTML references files with `/dashboard/` prefix but nginx needs proper rewrite rules. Apply the nginx ConfigMap fix above to resolve this.
+
+**🔧 Browser Console Errors (Normal)**: Devtron includes a WidgetBot chat widget that may show console errors. These are **normal** and don't affect functionality:
+- `"Orphaned iframed"` - WidgetBot iframe initialization (safe to ignore)
+- `WebSocket connection to 'wss://stonks.widgetbot.io/api/graphql' failed` - WidgetBot trying to connect to Discord (safe to ignore)
+- `[mobx] Encountered an uncaught exception` - React/MobX state management (usually harmless)
+- `Manifest: Line: 1, column: 1, Syntax error` - Fixed by correcting nginx MIME types above
+- `Content is cached for offline use` - Service Worker confirmation (normal)
 
 **Fix nginx configuration for static assets (if 404 errors for JS/CSS files)**
 ```bash
@@ -237,7 +250,12 @@ If you can access Devtron but see errors in the browser console:
 - **Port forwarding not working:** Ensure `kubectl port-forward` is running and try different local ports
 - **Service selector issue:** Run `kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'` to fix pod selector mismatch
 - **Port forwarding disconnects with "sandbox not found":** This is a common EKS/Kubernetes issue. Simply restart port forwarding: `kubectl port-forward svc/devtron-service -n devtroncd 8080:80`
+- **Port forwarding fails with "does not have a named port 'devtron'":** Service uses named port but pod only has numeric ports. Run the targetPort fix above before port forwarding
+- **404 errors for JavaScript/CSS files after port-forwarding works:** Nginx configuration issue with `/dashboard/` path mapping. Apply the nginx ConfigMap fix above and restart the dashboard pod
+- **Browser console shows WidgetBot/WebSocket errors:** These are **normal** - Devtron includes a chat widget that connects to Discord. Errors like "Orphaned iframed" or WebSocket failures are harmless and don't affect functionality
 - **404 errors for JavaScript/CSS files or "Unexpected number" syntax errors:** This indicates nginx configuration issues. The automatic fixes above should resolve this, but if problems persist, the files may need manual correction
+
+> **🔧 Important**: The service selector issue (`app=devtron` vs `app=dashboard`) is **NOT related to core installation** - it's a known Helm chart configuration issue that affects the LoadBalancer routing. Always run the service selector fix after installation completes.
 
 ### Debug Commands:
 
@@ -362,7 +380,7 @@ If you cannot access Devtron:
 | Step | Duration | What Happens |
 |------|----------|-------------|
 | **Step 1** | 🚀 1-2 min | Connect to EKS cluster |
-| **Step 2** | ⚡ 3-8 min | Install Devtron via Helm |
+| **Step 2** | ⚡ 1-8 min | Install Devtron via Helm |
 | **Step 3** | 🕐 **20-50 min** | Wait for complete installation |
 | **Step 4** | 🚀 1-2 min | Configure access and get credentials |
 | **Step 5** | ✅ Immediate | Access Devtron dashboard |
