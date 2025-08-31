@@ -155,7 +155,7 @@ kubectl get pods -A
 - Ready for Devtron installation
 - Follow [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md) for Devtron deployment
 
-> ⚠️ **Important**: Before running `cdk deploy --require-approval never --profile AWS_PROFILE --profile AWS_PROFILE`, make sure you have configured the environment variables. See the **"Configure Environment Variables"** section below.
+> ⚠️ **Important**: Before running `cdk deploy --require-approval never --profile AWS_PROFILE`, make sure you have configured the environment variables. See the **"Configure Environment Variables"** section below.
 
 ### 🔄 Step-by-Step Option (Manual)
 
@@ -207,7 +207,7 @@ echo "=============================="
 
 ### 4. Deploy EKS Cluster
 ```bash
-npx cdk deploy --require-approval never --profile AWS_PROFILE --profile AWS_PROFILE
+npx cdk deploy --require-approval never --profile AWS_PROFILE
 ```
 
 ### 5. Configure kubectl
@@ -296,7 +296,7 @@ npx cdk destroy --profile AWS_PROFILE
 
 ## 🎯 Tips
 
-- **First time**: Use the direct deployment workflow with `cdk deploy --require-approval never --profile AWS_PROFILE --profile AWS_PROFILE`
+- **First time**: Use the direct deployment workflow with `cdk deploy --require-approval never --profile AWS_PROFILE`
 - **EKS Cluster**: Ready in 15-20 minutes
 - **Devtron Installation**: Additional 20-50 minutes (follow INSTALL_DEVTRON.md)
 - **Monitoring**: Use `kubectl get pods -n devtroncd && kubectl get installers installer-devtron -n devtroncd` for real-time status
@@ -346,7 +346,7 @@ watch -n 300 "kubectl -n devtroncd get installers installer-devtron -o jsonpath=
 
 | Command | Description | Estimated Time |
 |---------|-------------|----------------|
-| `cdk deploy --require-approval never --profile AWS_PROFILE --profile AWS_PROFILE` | Deploy complete EKS cluster | 15-70 min (cluster only: 15-20 min, measured: ~17.9 min) |
+| `cdk deploy --require-approval never --profile AWS_PROFILE` | Deploy complete EKS cluster | 15-70 min (cluster only: 15-20 min, measured: ~17.9 min) |
 | `cdk destroy --profile AWS_PROFILE` | Remove EKS cluster | 5-10 min |
 | `aws eks update-kubeconfig --help` | Show connection instructions | Instantaneous |
 | `aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile AWS_PROFILE` | Connect to cluster | 1-2 min |
@@ -511,7 +511,7 @@ Follow these guides in order to have a complete development environment with Kub
 
 ### 📋 Essential Variables for CDK Deploy
 
-**Before running `cdk deploy --require-approval never --profile AWS_PROFILE --profile AWS_PROFILE`, configure these variables:**
+**Before running `cdk deploy --require-approval never --profile AWS_PROFILE`, configure these variables:**
 
 ```bash
 export ENV_NAME=dev

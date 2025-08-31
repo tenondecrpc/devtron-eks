@@ -10,8 +10,8 @@ Manual installation guide for Devtron with CI/CD on an EKS cluster.
 
 Before installing Devtron, ensure you have:
 
-1. **EKS Cluster**: Deployed via CDK (see README.md for deployment instructions)
-2. **Cluster Connection**: Run `npm run connect-cluster` to connect to your EKS cluster
+1. **EKS Cluster**: Deployed via CDK (see [README.md](README.md#quick-start-5-minutes-setup) for deployment instructions)
+2. **Cluster Connection**: Run `aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile AWS_PROFILE` to connect to your EKS cluster
 3. **kubectl**: Configured and connected to your cluster
 4. **Helm**: Version 3.8+ installed
 
@@ -26,8 +26,8 @@ Before installing Devtron, ensure you have:
 ## Step 1: Connect to EKS Cluster
 
 ```bash
-npm run connect-cluster
-npm run status
+aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile AWS_PROFILE
+kubectl cluster-info && kubectl get nodes
 ```
 
 **⏱️ Estimated time: 1-2 minutes**
@@ -97,9 +97,9 @@ After Devtron installation, the service selector needs to be corrected:
 kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'
 ```
 
-**Or use the npm script:**
+**Or run the command directly:**
 ```bash
-npm run fix-devtron-service
+kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'
 ```
 
 **⏱️ Estimated time: 1-2 minutes**
@@ -110,10 +110,10 @@ npm run fix-devtron-service
 ## Useful Commands
 
 ```bash
-npm run status                    # Check cluster status
-npm run devtron-status           # Get Devtron admin password
-npm run fix-devtron-service     # Fix service selector configuration
-npm run cost-analysis           # Cost analysis
+kubectl cluster-info && kubectl get nodes                    # Check cluster status
+kubectl get svc -n devtroncd devtron-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' && kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d          # Get Devtron admin password
+kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'    # Fix service selector configuration
+kubectl top nodes && echo "EKS: ~$70/month + nodes"          # Cost analysis
 
 # Port forwarding (run in separate terminal)
 kubectl port-forward svc/devtron-service -n devtroncd 8080:80
@@ -125,9 +125,9 @@ kubectl port-forward svc/devtron-service -n devtroncd 8080:80
 
 - **Slow installation:** Wait 15-20 minutes, it's normal for PostgreSQL initialization and service mesh setup
 - **Stuck in 'Downloaded' state:** Check pod status with `kubectl get pods -n devtroncd -w`
-- **Not accessible:** Run `npm run fix-devtron-service` to fix service selector configuration
+- **Not accessible:** Run `kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'` to fix service selector configuration
 - **Port forwarding not working:** Ensure `kubectl port-forward` is running and try different local ports
-- **Service selector issue:** Run `npm run fix-devtron-service` to fix pod selector mismatch
+- **Service selector issue:** Run `kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'` to fix pod selector mismatch
 
 ### Debug Commands:
 
@@ -154,11 +154,11 @@ kubectl get ingress -n devtroncd
 ### Quick Health Check:
 
 ```bash
-# Run the npm status script
-npm run status
+# Check cluster status
+kubectl cluster-info && kubectl get nodes
 
 # Get Devtron installation status
-npm run devtron-status
+kubectl get svc -n devtroncd devtron-service && kubectl get pods -n devtroncd
 
 # Check cluster resources
 kubectl top nodes
@@ -181,6 +181,11 @@ kubectl port-forward svc/devtron-service -n devtroncd 8080:80
 ```bash
 # Get admin password
 kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
+```
+
+**Or get both URL and password:**
+```bash
+kubectl get svc -n devtroncd devtron-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' && kubectl -n devtroncd get secret devtron-secret -o jsonpath='{.data.ADMIN_PASSWORD}' | base64 -d
 ```
 
 ### Access Devtron
@@ -227,8 +232,8 @@ If you cannot access Devtron:
 2. **Try different port**: If 8080 is busy, use another port like `kubectl port-forward svc/devtron-service -n devtroncd 3000:80`
 3. **Verify service status**: Run `kubectl get svc devtron-service -n devtroncd`
 4. **Check pod status**: Run `kubectl get pods -n devtroncd`
-5. **Fix service configuration**: Run `npm run fix-devtron-service` if needed
-6. **Verify installation**: Run `npm run devtron-status` to check Devtron status
+5. **Fix service configuration**: Run `kubectl patch svc devtron-service -n devtroncd --type merge -p '{"spec":{"selector":{"app":"dashboard"}}}'` if needed
+6. **Verify installation**: Run `kubectl get svc -n devtroncd devtron-service && kubectl get pods -n devtroncd` to check Devtron status
 
 ## Resources
 
@@ -249,6 +254,6 @@ If you cannot access Devtron:
 
 If you encounter issues:
 1. Check the troubleshooting section above
-2. Verify your EKS cluster is healthy with `npm run status`
+2. Verify your EKS cluster is healthy with `kubectl cluster-info && kubectl get nodes`
 3. Review Devtron operator logs: `kubectl logs -f -l app=devtron -n devtroncd`
 4. Check the [Devtron community forums](https://github.com/devtron-labs/devtron/discussions) for similar issues
