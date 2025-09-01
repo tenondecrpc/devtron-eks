@@ -129,10 +129,7 @@ kubectl get storageclass  # Should show gp2 as default
 
 With Storage Class configured, install Devtron:
 
-```bash
-# Follow INSTALL_DEVTRON.md for detailed instructions
-# Takes 5-8 minutes
-```
+Follow [INSTALL_DEVTRON.md](INSTALL_DEVTRON.md) for detailed instructions (Takes 5-8 minutes)
 
 > ⚠️ **Before running `cdk deploy`, configure environment variables below.**
 
@@ -180,6 +177,8 @@ export ENV_NAME=dev
 export PROJECT_NAME=devtron
 export AWS_ACCOUNT=your-aws-account-id
 export AWS_REGION=us-east-1
+export SSO_ROLE_NAME=your-sso-role-name
+export ACCESS_ROLE_NAME=your-role-name
 ```
 
 ### Cleanup cluster
