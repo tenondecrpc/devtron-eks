@@ -74,11 +74,15 @@ cdk deploy --require-approval never --profile AWS_PROFILE
 - ✅ Essential add-ons (VPC CNI, CoreDNS, EBS CSI)
 - ✅ Security groups and IAM roles
 
-### ⚠️ **CRITICAL: Post-Deploy Step Required**
+### ⚠️ **CRITICAL: Post-Deploy Steps Required**
 
-**⚠️ IMPORTANT: After CDK deployment completes, you MUST run this command:**
+**⚠️ IMPORTANT: After CDK deployment completes, you MUST run these steps in order:**
 
 ```bash
+# Step 1: Connect to cluster
+aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile AWS_PROFILE
+
+# Step 2: Create Storage Class (MANDATORY)
 # Option 1: Use npm script (recommended)
 npm run create-storage-class
 
@@ -100,7 +104,7 @@ volumeBindingMode: WaitForFirstConsumer
 EOF
 ```
 
-**Why this is required:**
+**Why the Storage Class step is required:**
 - EBS CSI Driver doesn't always create the default Storage Class automatically
 - Without this, Devtron PVCs will remain in "Pending" state
 - PostgreSQL, Redis, and other stateful applications won't start
@@ -108,21 +112,23 @@ EOF
 
 **Verify it worked:**
 ```bash
-kubectl get storageclass
-# Should show: gp2 (default)
+kubectl cluster-info && kubectl get nodes
+kubectl get storageclass  # Should show: gp2 (default)
 ```
 
 ### 📊 **Post-Deploy Verification**
 
-After the Storage Class step:
+**Use these commands to verify everything is working:**
 
 ```bash
-# Connect to cluster
-aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile AWS_PROFILE
-
-# Verify cluster
+# Verify cluster connection and nodes
 kubectl cluster-info && kubectl get nodes
-kubectl get storageclass  # Should show gp2 as default
+
+# Verify Storage Class is configured correctly
+kubectl get storageclass
+
+# Check cluster health
+kubectl get pods -n kube-system
 ```
 
 ### 🎯 **Next: Install Devtron**
@@ -195,23 +201,26 @@ npx cdk destroy --profile your-profile
 ## 🎯 Key Points
 
 - **EKS Cluster**: Ready in 15-20 minutes
-- **Post-deploy step**: Storage Class creation (1 minute, mandatory)
+- **Post-deploy steps**: Connect to cluster (30s) → Storage Class creation (30s, mandatory)
 - **Devtron**: Installs in 5-8 minutes after Storage Class setup
 - **Total time**: ~20-25 minutes until Devtron-ready
 
 ### Essential Commands
 
 ```bash
-# Deploy
+# 1. Deploy EKS cluster
 cdk deploy --require-approval never --profile your-profile
 
-# Connect
+# 2. Connect to cluster (AFTER deployment)
 aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile your-profile
 
-# Create Storage Class (MANDATORY post-deploy step)
+# 3. Create Storage Class (MANDATORY post-deploy step)
 npm run create-storage-class
 
-# Cleanup
+# 4. Verify everything works
+kubectl cluster-info && kubectl get nodes && kubectl get storageclass
+
+# 5. Cleanup when done
 npx cdk destroy --profile your-profile
 ```
 
