@@ -1,5 +1,5 @@
 import { Construct } from "constructs";
-import { CfnOutput, Duration } from "aws-cdk-lib";
+import { CfnOutput } from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as eksv2 from '@aws-cdk/aws-eks-v2-alpha';
 import { EksConstruct } from "../../construct/eks-construct";
@@ -21,8 +21,7 @@ export class EksFactory extends Construct {
         super(scope, id);
 
         const { params, vpc } = props;
-        const { envName, projectName } = params;
-        const isProd = envName === "prod";
+        const { envName, projectName, ssoRoleName, isProd } = params;
 
         // Create EKS cluster with optimized configuration
         this.cluster = new EksConstruct(this, 'EksCluster', {
@@ -42,6 +41,8 @@ export class EksFactory extends Construct {
                 Purpose: 'EKS-Cluster',
                 ManagedBy: 'CDK-EksFactory',
             },
+            authMethod: 'sso',
+            ssoRoleName: ssoRoleName,
         });
 
         // Install essential EKS add-ons

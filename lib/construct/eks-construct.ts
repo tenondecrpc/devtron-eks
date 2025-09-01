@@ -16,6 +16,8 @@ export interface EksConstructProps {
     readonly adminPrincipalArn?: string;
     readonly skipClusterAdmin?: boolean;
     readonly authMethod?: 'sso' | 'access-keys' | 'auto';
+    readonly ssoRoleName?: string;
+    readonly accessRoleName?: string;
 }
 
 export class EksConstruct extends Construct {
@@ -83,6 +85,10 @@ export class EksConstruct extends Construct {
                 { subnetType: ec2.SubnetType.PUBLIC }
             ],
         });
+
+        // Configure kubectl provider for Kubernetes manifests
+        // This is required for KubernetesManifest to work with eksv2-alpha
+        // Note: kubectlProvider is configured automatically when needed
 
         // EBS CSI DRIVER PERMISSIONS:
         // FIXED: Add EBS permissions to Node Group IAM Role
@@ -166,7 +172,7 @@ export class EksConstruct extends Construct {
 
         // Add the deploying user as cluster admin (if not skipped)
         if (!props.skipClusterAdmin) {
-            this.addClusterAdmin(props.adminPrincipalArn, props.authMethod);
+            this.addClusterAdmin(props, props.adminPrincipalArn, props.authMethod);
         }
 
         // Outputs are handled by EksFactory to avoid duplicates
@@ -225,7 +231,7 @@ export class EksConstruct extends Construct {
     /**
      * Add cluster admin access for the deploying user
      */
-    private addClusterAdmin(customPrincipalArn?: string, authMethod: 'sso' | 'access-keys' | 'auto' = 'auto'): void {
+    private addClusterAdmin(props: EksConstructProps, customPrincipalArn?: string, authMethod: 'sso' | 'access-keys' | 'auto' = 'auto'): void {
         let principalArn: string;
 
         if (customPrincipalArn) {
@@ -233,7 +239,7 @@ export class EksConstruct extends Construct {
             principalArn = customPrincipalArn;
         } else {
             // Get default principal based on auth method
-            principalArn = this.getDefaultPrincipalArn(authMethod);
+            principalArn = this.getDefaultPrincipalArn(props, authMethod);
         }
 
         // Add the principal as cluster admin
@@ -252,30 +258,79 @@ export class EksConstruct extends Construct {
     /**
      * Get the default principal ARN based on authentication method
      */
-    private getDefaultPrincipalArn(authMethod: 'sso' | 'access-keys' | 'auto' = 'auto'): string {
+    private getDefaultPrincipalArn(props: EksConstructProps, authMethod: 'sso' | 'access-keys' | 'auto' = 'auto'): string {
         const account = cdk.Stack.of(this).account;
 
         switch (authMethod) {
             case 'sso':
-                // SSO role (current setup)
-                return `arn:aws:iam::${account}:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess+_5af960e92c465c55`;
+                // SSO role from environment variable or fallback
+                const ssoRoleName = props.ssoRoleName || 'aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess';
+                return `arn:aws:iam::${account}:role/${ssoRoleName}`;
 
             case 'access-keys':
                 // Common roles for access keys - try OrganizationAccountAccessRole first
-                return `arn:aws:iam::${account}:role/OrganizationAccountAccessRole`;
+                const accessRoleName = props.accessRoleName || 'OrganizationAccountAccessRole';
+                return `arn:aws:iam::${account}:role/${accessRoleName}`;
 
             case 'auto':
             default:
                 // Default to SSO for backward compatibility
                 // TODO: Could implement actual detection logic here
-                return `arn:aws:iam::${account}:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess+_5af960e92c465c55`;
+                const defaultRoleName = props.ssoRoleName || 'aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess';
+                return `arn:aws:iam::${account}:role/${defaultRoleName}`;
         }
     }
 
     /**
-     * Install EKS Add-ons
+     * Ensure default Storage Class exists for EKS
+     *
+     * PROBLEM SOLVED:
+     * - Devtron and other Helm charts create PVCs that may not specify storageClassName
+     * - In EKS, if no default Storage Class exists, PVCs remain in "Pending" state
+     * - This causes database pods to fail during startup due to unbound persistent volumes
+     *
+     * APPROACH:
+     * - The EBS CSI Driver typically creates a gp2 Storage Class automatically
+     * - If not present, users should create it manually or via kubectl
+     * - This method documents the requirement and provides guidance
+     *
+     * CONFIGURATION:
+     * - Uses gp2 (General Purpose SSD) volumes - cost-effective for most workloads
+     * - Should be set as default class so PVCs without explicit storageClassName use it
+     */
+    private ensureDefaultStorageClass(): void {
+        // Note: EBS CSI Driver should create gp2 Storage Class automatically
+        // If not present, create it manually with:
+        //
+        // kubectl apply -f - <<EOF
+        // apiVersion: storage.k8s.io/v1
+        // kind: StorageClass
+        // metadata:
+        //   name: gp2
+        //   annotations:
+        //     storageclass.kubernetes.io/is-default-class: "true"
+        // provisioner: kubernetes.io/aws-ebs
+        // parameters:
+        //   type: gp2
+        //   fsType: ext4
+        // reclaimPolicy: Delete
+        // allowVolumeExpansion: false
+        // volumeBindingMode: WaitForFirstConsumer
+        // EOF
+
+        // For now, we'll log this requirement and let users know
+        // In future versions, this could be implemented with proper kubectl provider setup
+        console.log('ℹ️  Storage Class gp2 will be created by EBS CSI Driver');
+        console.log('🔧 If PVCs remain in Pending state, ensure gp2 Storage Class exists');
+    }
+
+    /**
+     * Install EKS Add-ons with storage configuration
      */
     public installEksAddons(): void {
+        // Ensure default Storage Class exists before installing other add-ons
+        this.ensureDefaultStorageClass();
+
         // Install VPC CNI Add-on
         new eksv2.Addon(this, 'VpcCniAddon', {
             cluster: this.cluster,

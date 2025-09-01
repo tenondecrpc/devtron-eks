@@ -9,6 +9,8 @@ export interface ParamsConfig {
   envName: string;
   projectName: string;
   isProd: boolean;
+  ssoRoleName?: string;
+  accessRoleName?: string;
 }
 
 export interface AppConfig {
@@ -33,6 +35,8 @@ export function loadEnvironment(): AppConfig {
     envName: process.env.ENV_NAME,
     projectName: process.env.PROJECT_NAME,
     isProd: process.env.ENV_NAME == 'prod' ? true : false,
+    ssoRoleName: process.env.SSO_ROLE_NAME,
+    accessRoleName: process.env.ACCESS_ROLE_NAME,
   };
 
 
