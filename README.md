@@ -110,25 +110,22 @@ EOF
 - PostgreSQL, Redis, and other stateful applications won't start
 - **This takes 30 seconds and is mandatory**
 
-**Verify it worked:**
-```bash
-kubectl cluster-info && kubectl get nodes
-kubectl get storageclass  # Should show: gp2 (default)
-```
+### 📊 **Complete Post-Deploy Verification**
 
-### 📊 **Post-Deploy Verification**
-
-**Use these commands to verify everything is working:**
+**After completing both steps above, verify everything is working:**
 
 ```bash
-# Verify cluster connection and nodes
+# 1. Verify cluster connection and nodes
 kubectl cluster-info && kubectl get nodes
 
-# Verify Storage Class is configured correctly
+# 2. Verify Storage Class is configured correctly (should show gp2 as default)
 kubectl get storageclass
 
-# Check cluster health
+# 3. Check cluster health and essential pods
 kubectl get pods -n kube-system
+
+# 4. Optional: Check all resources in cluster
+kubectl get all --all-namespaces | head -20
 ```
 
 ### 🎯 **Next: Install Devtron**
