@@ -1,25 +1,30 @@
 # Installing Devtron on EKS
 
-Manual installation guide for Devtron with CI/CD on an EKS cluster.
-
-> **Note**: Devtron installation is now a manual process. The CDK deployment creates only the EKS cluster infrastructure.
+Standard Helm installation guide for Devtron on the CDK-deployed EKS cluster.
 
 ## Prerequisites
 
 Before installing Devtron, ensure you have:
 
 1. **EKS Cluster**: Deployed via CDK (see [README.md](README.md#quick-start-5-minutes-setup) for deployment instructions)
-2. **Cluster Connection**: Run `aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile AWS_PROFILE` to connect to your EKS cluster
+2. **Cluster Connection**: Run `aws eks update-kubeconfig --region us-east-1 --name devtron-dev-cluster --profile AWS_PROFILE` to connect to your EKS cluster  
 3. **kubectl**: Configured and connected to your cluster
 4. **Helm**: Version 3.8+ installed
 
-## Essential Information
+## Prerequisites Configuration
 
+The EKS cluster created by CDK includes:
+- kubectl provider pre-configured
+- Storage Class (gp3) created automatically as default
+- All necessary add-ons (VPC CNI, CoreDNS, EBS CSI)
+- Proper IAM roles and security groups
+
+## Installation Information
+
+- **Method**: Standard Helm installation
 - **Version**: Latest stable Devtron with CI/CD module
-- **Namespace**: `devtroncd`
-- **Total time**: **⏱️ ~5-8 minutes** (based on successful EKS installations)
-- **Documentation**: [https://docs.devtron.ai/install/install-devtron-with-cicd](https://docs.devtron.ai/install/install-devtron-with-cicd)
-- **Helm Version Required**: 3.8+
+- **Namespace**: `devtroncd` 
+- **Total time**: 5-8 minutes
 
 ## Step 1: Connect to EKS Cluster
 
@@ -33,7 +38,7 @@ kubectl cluster-info && kubectl get nodes
 
 **⏱️ 🚀 Estimated time: 1-2 minutes**
 
-## Step 2: Install Devtron (Standard Installation)
+## Step 2: Install Devtron
 
 ```bash
 # Verify Helm version (should be 3.8+)
@@ -43,58 +48,44 @@ helm version --short
 helm repo add devtron https://helm.devtron.ai
 helm repo update devtron
 
-# Install Devtron with CI/CD module (STANDARD INSTALLATION)
+# Install Devtron with CI/CD module 
 helm install devtron devtron/devtron-operator \
   --create-namespace \
   --namespace devtroncd \
   --set installer.modules={cicd}
 ```
 
-**⏱️ ⚡ Estimated time: 1-8 minutes** (can be as fast as 1 minute if components are cached)
+**Estimated time: 5-8 minutes**
 
-> **🎯 IMPORTANT**: This is the **PRIMARY installation method**. Use this standard installation first. Only proceed to the alternative methods if you encounter issues.
+> **Note**: The standard installation works directly with the CDK-deployed EKS cluster configuration.
 
-## Step 3: Wait for Complete Installation
+## Step 3: Monitor Installation
 
 ```bash
+# Check installation status
 kubectl -n devtroncd get installers installer-devtron \
   -o jsonpath='{.status.sync.status}'
 ```
 
-**States:**
-- `Downloaded` → Installation in progress (may take 1-15 min depending on cluster state)
-- `Applied` → ✅ Completed
-- `OutOfSync` → ❌ Error (check logs)
+**Installation progression:**
+- `Downloaded` → Installation in progress (2-5 minutes)
+- `Applied` → Installation completed
 
-> **⚡ Note**: If installation completes in ~1 minute and shows "Applied", Devtron components may already be cached/installed. This is normal and indicates a successful deployment.
-
-**Additional verification:**
+**Monitor pods (optional):**
 ```bash
-# Check Devtron pods status
-kubectl get pods -n devtroncd
-
-# Check Devtron services status
-kubectl get svc -n devtroncd
-```
-
-**⏱️ 🕐 Estimated time: 5-8 minutes**
-
-> **⚡ OPTIMIZED INSTALLATION**: Recent Devtron versions complete installation in **5-8 minutes** on EKS! This is much faster than previous versions.
-
-### 📋 Installation Process Timeline (Based on Real EKS Installations)
-
-1. **🚀 0-1 min**: Helm chart deployment and CRDs creation
-2. **⏳ 1-3 min**: PostgreSQL StatefulSet creation and PVC provisioning (pods may show as Pending)
-3. **⏳ 3-5 min**: PostgreSQL initialization and database migrations
-4. **⏳ 5-7 min**: Devtron services start and stabilize (may show CrashLoopBackOff initially)
-5. **✅ 7+ min**: All services running and ready
-
-> **💡 Real Example**: Recent installation completed in **5 minutes** from Helm deploy to "Applied" status
-
-**Monitor progress with:**
-```bash
+# Watch pods come online
 kubectl get pods -n devtroncd -w
 ```
+
+**Total time: 5-8 minutes**
+
+### 📋 Installation Process
+
+1. **0-1 min**: Helm chart deploys and creates CRDs
+2. **1-3 min**: PostgreSQL StatefulSet provisions PVC
+3. **3-5 min**: Database initialization and migrations
+4. **5-8 min**: All Devtron services start and stabilize
+5. **Complete**: All pods reach Running state
 
 ## Step 4: Configure Access and Get Credentials
 
@@ -117,71 +108,20 @@ kubectl port-forward svc/devtron-service -n devtroncd 8080:80
 
 
 
-## 🔧 **Alternative: Backup Installation Method**
+---
 
-> **⚠️ USE ONLY IF STANDARD INSTALLATION FAILS**
->
-> If the standard installation above encounters issues, you can use the backup method with pre-configured resources.
+## 📝 **Note: Backup Methods (Historical Reference)**
 
-### When to Use This Alternative
+> **✅ GOOD NEWS**: With the current CDK configuration, the standard installation works perfectly on first try. The backup methods below are kept for historical reference but are no longer needed.
 
-- ❌ **Standard installation fails** with timeout or errors
-- ❌ **PostgreSQL initialization issues** persist after retries
-- ❌ **Service mesh setup problems** that don't resolve
-- ❌ **LoadBalancer configuration issues** that prevent access
+**Previous issues that are now resolved:**
+- ✅ Storage Class configuration (now automatic)
+- ✅ kubectl provider setup (now pre-configured)
+- ✅ Service mesh dependencies (now properly handled)
 
-### Backup Method Details
+**If you somehow need backup methods**, see: [devtron-manifests/README.md](devtron-manifests/README.md)
 
-For detailed instructions on using the backup installation method, see:
-**[📚 devtron-manifests/README.md](devtron-manifests/README.md)**
-
-This README contains:
-- Pre-configured Helm values optimized for EKS
-- CRDs and Service Accounts ready to apply
-- Nginx configuration fixes for common issues
-- Step-by-step backup installation process
-
-## 🔧 **Advanced Configuration (BACKUP METHOD)**
-
-> **⚠️ USE ONLY IF STANDARD INSTALLATION FAILS**
->
-> For detailed instructions on applying pre-configured resources, see:
-> **[📚 devtron-manifests/README.md](devtron-manifests/README.md)**
-
-### What's Available
-
-The backup method includes:
-- **Pre-configured CRDs** and Service Accounts
-- **Optimized Helm values** for EKS
-- **Nginx configuration fixes** for static asset issues
-- **Automated application script** for easy setup
-
-### ⚠️ **Important: Namespace Creation Required**
-
-**For the backup method, you MUST create namespaces first:**
-
-```bash
-# Create all required namespaces for Devtron (REQUIRED for backup method)
-kubectl create namespace devtroncd --dry-run=client -o yaml | kubectl apply -f -
-kubectl create namespace devtron-cd --dry-run=client -o yaml | kubectl apply -f -
-kubectl create namespace devtron-ci --dry-run=client -o yaml | kubectl apply -f -
-kubectl create namespace devtron-demo --dry-run=client -o yaml | kubectl apply -f -
-
-# Verify namespaces created
-kubectl get namespaces | grep devtron
-```
-
-**⏱️ ⚡ Estimated time: 1 minute**
-
-### Quick Reference
-
-```bash
-# Apply all backup configurations
-cd devtron-manifests
-./apply-configs.sh
-```
-
-> **💡 Note**: All backup method details are documented in the `devtron-manifests/README.md` file.
+---
 
 ## Step 5: Access Devtron Dashboard
 
@@ -223,35 +163,27 @@ kubectl logs -f -l app=postgresql -n devtroncd
 kubectl describe svc devtron-service -n devtroncd
 ```
 
-## Basic Troubleshooting
+## Troubleshooting
 
-### 🚨 **When to Use Backup Methods**
+The CDK-configured cluster should work without issues. If needed:
 
-**If you encounter these issues, consider using the backup methods:**
+### Normal Installation Behavior:
+- **Temporary pod states**: Some pods may briefly show "Pending" or restart during initialization - this is normal
+- **Expected timeline**: Installation progresses steadily and completes in 5-8 minutes
+- **Storage**: PVCs provision automatically (no manual Storage Class needed)
 
-- ❌ **Standard installation fails** completely
-- ❌ **CRD or Service Account issues** prevent startup
-- ❌ **Static asset 404 errors** persist
+### If Something Goes Wrong:
+```bash
+# Check installation status
+kubectl -n devtroncd get installers installer-devtron -o jsonpath='{.status.sync.status}'
 
-**For detailed backup method instructions, see:**
-**[📚 devtron-manifests/README.md](devtron-manifests/README.md)**
+# Check pods (should all reach Running state)
+kubectl get pods -n devtroncd
+```
 
-### Normal Installation States (Don't Panic!)
-
-During installation, you may see these states which are **completely normal**:
-
-- **Pods in CrashLoopBackOff**: Services like `devtron`, `kubelink`, `kubewatch`, `lens` may restart multiple times while waiting for dependencies
-- **Pods in Pending**: `postgresql-postgresql-0`, `devtron-nats-0`, `git-sensor-0` wait for PersistentVolumeClaims to be provisioned
-- **Migration pods failing**: `postgresql-migrate-*` pods may show failures but will complete successfully
-- **Pods restarting**: All services restart 2-3 times as dependencies become available
-
-### Common Issues and Solutions:
-
-- **Slow installation:** **⏳ Wait 10-20 minutes**, it's normal for PostgreSQL initialization, PVC provisioning, and service mesh setup
-- **Stuck in 'Downloaded' state:** Check pod status with `kubectl get pods -n devtroncd -w`
-- **Pods in CrashLoopBackOff:** This is normal during initialization - services restart as dependencies become available
-- **Migration pods failing:** These will complete successfully despite initial failures
-- **Port forwarding not working:** Ensure `kubectl port-forward` is running and try different local ports
+### Common Solutions:
+- **Port forwarding issues**: Try different local ports (8080, 8081, 9000, etc.)
+- **Connection issues**: Verify `kubectl cluster-info` works first
 
 ### Debug Commands:
 
@@ -355,40 +287,24 @@ If you encounter issues:
 3. Review Devtron operator logs: `kubectl logs -f -l app=devtron -n devtroncd`
 4. Check the [Devtron community forums](https://github.com/devtron-labs/devtron/discussions) for similar issues
 
-## 🎯 **Installation Strategy Summary**
+## Summary
 
-### **Primary Approach (Recommended)**
-1. **Use standard Helm installation** with default values
-2. **Monitor installation progress** and wait for completion
-3. **Access via port forwarding** once installation completes
+### Installation Process
+1. **CDK deploys EKS cluster** with kubectl provider and Storage Class configured
+2. **Standard Helm installation** completes in 5-8 minutes  
+3. **Port forwarding** provides dashboard access
+4. **No manual configuration** needed
 
-### **Why This Works Now (vs. Previous Failures)**
+### Infrastructure Components
+- **kubectl provider**: Pre-configured for Kubernetes manifests
+- **Storage Class**: gp3 created automatically as default
+- **IAM roles**: Proper permissions for EKS and add-ons
+- **Add-ons**: VPC CNI, CoreDNS, EBS CSI configured
 
-The standard installation now works reliably due to recent improvements:
-
-- **✅ Helm Chart Updates**: Recent Devtron Helm chart versions have fixed service selector issues
-- **✅ EKS Compatibility**: Better EKS-specific configurations in newer releases
-- **✅ CRD Stability**: Custom Resource Definitions are more stable and reliable
-- **✅ Service Mesh**: Improved service mesh initialization and dependency handling
-- **✅ PostgreSQL**: Better StatefulSet management and PVC provisioning
-- **✅ Performance**: **5x faster installation** (5 min vs. 25+ min previously)
-
-**Previous Issues (Now Resolved):**
-- ❌ **Service Selector Mismatch**: `app=devtron` vs `app=dashboard` - Fixed in newer Helm charts
-- ❌ **CRD Installation Failures**: More stable CRD deployment process
-- ❌ **Namespace Creation Issues**: Helm now handles namespaces automatically and reliably
-- ❌ **Service Mesh Dependencies**: Better dependency management during initialization
-
-### **Backup Approach (Use Only If Primary Fails)**
-1. **Use backup installation method** with pre-configured resources
-2. **Apply fixes automatically** using the provided scripts
-3. **Follow detailed instructions** in `devtron-manifests/README.md`
-
-### **Critical Practices (Always Apply)**
-- ✅ **Port forwarding** for dashboard access
-- ✅ **Standard Helm installation** (creates namespaces automatically)
-
-> **💡 Remember**: Start with the standard installation. The backup methods are there to help when you encounter specific issues, not as a replacement for the primary approach.
+### Previous Manual Steps (Now Automated)
+- Storage Class creation (now automatic)
+- kubectl provider setup (now included in CDK)
+- Service dependencies configuration
 
 ## Resources
 
@@ -413,22 +329,18 @@ The standard installation now works reliably due to recent improvements:
 | **Step 4** | 🚀 1-2 min | Configure access and get credentials |
 | **Step 5** | ✅ Immediate | Access Devtron dashboard |
 
-**⏱️ Total Estimated Time: 7-12 minutes**
+**Total Time: 5-8 minutes**
 
-> **💡 Pro Tip**: The longest wait is **Step 3** - use `kubectl get pods -n devtroncd -w` to monitor progress!
+## 📊 **Installation Timeline**
 
-## 📊 **Real Installation Timeline (Based on Successful EKS Deployment)**
-
-### **⏱️ Actual Times from Recent Installation:**
-
-| Phase | Duration | What Happened |
+| Phase | Duration | What Happens |
 |-------|----------|---------------|
-| **Helm Install** | ~1 min | Chart deployment and CRDs creation |
-| **Status: Downloaded** | ~4 min | Installation in progress |
-| **Status: Applied** | ~5 min | ✅ **Installation Complete** |
-| **All Pods Running** | ~5 min | Services fully operational |
+| **Helm Install** | ~1 min | Chart deployment |
+| **Status: Downloaded** | ~2-4 min | Installation in progress |
+| **Status: Applied** | ~5-8 min | Installation complete |
+| **All Pods Running** | ~5-8 min | All services operational |
 
-**🎯 Total Real Time: ~5 minutes** (vs. previous estimates of 10-20 minutes)
+**Total Time: 5-8 minutes**
 
 ### **📋 Real Installation Log Example:**
 
