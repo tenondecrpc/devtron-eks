@@ -106,21 +106,6 @@ kubectl port-forward svc/devtron-service -n devtroncd 8080:80
 
 > **🎯 IMPORTANT!** Keep the port forwarding command running in a separate terminal window. The connection will remain active as long as the command is running.
 
-
-
----
-
-## 📝 **Note: Backup Methods (Historical Reference)**
-
-> **✅ GOOD NEWS**: With the current CDK configuration, the standard installation works perfectly on first try. The backup methods below are kept for historical reference but are no longer needed.
-
-**Previous issues that are now resolved:**
-- ✅ Storage Class configuration (now automatic)
-- ✅ kubectl provider setup (now pre-configured)
-- ✅ Service mesh dependencies (now properly handled)
-
-**If you somehow need backup methods**, see: [devtron-manifests/README.md](devtron-manifests/README.md)
-
 ---
 
 ## Step 5: Access Devtron Dashboard
